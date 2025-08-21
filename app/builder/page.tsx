@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/db/client'
 import { Loader2, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
 
 export default function BuilderPage() {
   const router = useRouter()
-  const supabase = createClient()
   
   const [title, setTitle] = useState('')
   const [selectedClient, setSelectedClient] = useState<string>('')
@@ -24,18 +22,12 @@ export default function BuilderPage() {
     loadClients()
   }, [])
 
-  async function loadClients() {
-    const { data } = await supabase
-      .from('clients')
-      .select('id, full_name')
-      .order('full_name')
-    
-    if (data) {
-      setClients(data)
-      // Select first client by default if exists
-      if (data.length > 0 && !selectedClient) {
-        setSelectedClient(data[0].id)
-      }
+  function loadClients() {
+    const savedClients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
+    setClients(savedClients)
+    // Select first client by default if exists
+    if (savedClients.length > 0 && !selectedClient) {
+      setSelectedClient(savedClients[0].id)
     }
   }
 
@@ -44,26 +36,27 @@ export default function BuilderPage() {
       setError('Please enter a workout name')
       return
     }
-    
-    if (!selectedClient) {
-      setError('Please select a client')
-      return
-    }
 
     setGenerating(true)
     setError('')
 
     try {
-      const response = await fetch('/api/workouts/generate', {
+      // Get selected client data
+      const client = selectedClient ? 
+        clients.find(c => c.id === selectedClient) : 
+        { full_name: 'Guest User', goals: 'General fitness' }
+
+      const response = await fetch('/api/workouts/generate-simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
-          clientId: selectedClient,
+          clientId: selectedClient || 'guest',
+          client,
           duration,
           intensity,
           focus: focus || undefined,
-          equipment: equipment ? equipment.split(',').map(e => e.trim()) : undefined,
+          equipment: equipment ? equipment.split(',').map(e => e.trim()) : [],
         }),
       })
 
@@ -72,6 +65,11 @@ export default function BuilderPage() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to generate workout')
       }
+
+      // Save workout to localStorage
+      const existingWorkouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
+      existingWorkouts.push(data.workout)
+      localStorage.setItem('ai-workout-workouts', JSON.stringify(existingWorkouts))
 
       // Navigate to the created workout
       router.push(`/workouts/${data.workoutId}`)
@@ -139,18 +137,12 @@ export default function BuilderPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={generating}
               >
-                {clients.length === 0 ? (
-                  <option value="">No clients yet - add a client first</option>
-                ) : (
-                  <>
-                    <option value="">Choose a client...</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.full_name}
-                      </option>
-                    ))}
-                  </>
-                )}
+                <option value="">Guest User (No client selected)</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.full_name}
+                  </option>
+                ))}
               </select>
             </div>
 

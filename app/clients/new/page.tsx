@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/db/client'
 import { User, Mail, Target, AlertCircle, Dumbbell, Save } from 'lucide-react'
 
 const EQUIPMENT_OPTIONS = [
@@ -13,7 +12,6 @@ const EQUIPMENT_OPTIONS = [
 
 export default function NewClientPage() {
   const router = useRouter()
-  const supabase = createClient()
   
   const [formData, setFormData] = useState({
     full_name: '',
@@ -40,7 +38,7 @@ export default function NewClientPage() {
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.full_name) {
@@ -52,74 +50,30 @@ export default function NewClientPage() {
     setError('')
 
     try {
-      // Get user's organization
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
-      let { data: userData } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
-
-      let organizationId = userData?.organization_id
-
-      if (!organizationId) {
-        // Create default organization if none exists
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: 'My Fitness Studio',
-            slug: `studio-${user.id.slice(0, 8)}`
-          })
-          .select()
-          .single()
-
-        if (orgError) throw orgError
-
-        // Update user's organization
-        await supabase
-          .from('users')
-          .update({ organization_id: org.id })
-          .eq('id', user.id)
-
-        organizationId = org.id
+      // Create client with unique ID
+      const client = {
+        id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        full_name: formData.full_name,
+        email: formData.email || null,
+        age: formData.age ? parseInt(formData.age) : null,
+        sex: formData.sex || null,
+        height_cm: formData.height_cm ? parseInt(formData.height_cm) : null,
+        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+        goals: formData.goals || null,
+        injuries: formData.injuries || null,
+        equipment: formData.equipment,
+        preferences: {},
+        notes: formData.notes,
+        created_at: new Date().toISOString()
       }
 
-      // Create client
-      const { data: client, error: clientError } = await supabase
-        .from('clients')
-        .insert({
-          organization_id: organizationId,
-          full_name: formData.full_name,
-          email: formData.email || null,
-          age: formData.age ? parseInt(formData.age) : null,
-          sex: formData.sex || null,
-          height_cm: formData.height_cm ? parseInt(formData.height_cm) : null,
-          weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
-          goals: formData.goals || null,
-          injuries: formData.injuries || null,
-          equipment: formData.equipment,
-          preferences: {}
-        })
-        .select()
-        .single()
+      // Save to localStorage
+      const existingClients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
+      existingClients.push(client)
+      localStorage.setItem('ai-workout-clients', JSON.stringify(existingClients))
 
-      if (clientError) throw clientError
-
-      // Add initial note if provided
-      if (formData.notes) {
-        await supabase
-          .from('messages')
-          .insert({
-            client_id: client.id,
-            author_user_id: user.id,
-            role: 'coach',
-            content: formData.notes
-          })
-      }
-
-      router.push(`/clients/${client.id}`)
+      // Redirect to dashboard
+      router.push('/dashboard')
     } catch (err: any) {
       console.error('Failed to create client:', err)
       setError(err.message || 'Failed to create client')

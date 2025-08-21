@@ -1,43 +1,26 @@
-import { createServerClient } from '@/lib/db/server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, Users, Dumbbell, ChartBar, Settings } from 'lucide-react'
 
-export default async function DashboardPage() {
-  const supabase = await createServerClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default function DashboardPage() {
+  const [clients, setClients] = useState<any[]>([])
+  const [workouts, setWorkouts] = useState<any[]>([])
+  const [stats, setStats] = useState({ clients: 0, workouts: 0 })
 
-  // Get user's organization
-  const { data: userData } = await supabase
-    .from('users')
-    .select('*, organizations(*)')
-    .eq('id', user.id)
-    .single()
-
-  // Get recent clients
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  // Get recent workouts
-  const { data: workouts } = await supabase
-    .from('workouts')
-    .select('*, clients(full_name)')
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  // Get stats
-  const { count: clientCount } = await supabase
-    .from('clients')
-    .select('*', { count: 'exact', head: true })
-
-  const { count: workoutCount } = await supabase
-    .from('workouts')
-    .select('*', { count: 'exact', head: true })
+  useEffect(() => {
+    // Load data from localStorage
+    const savedClients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
+    const savedWorkouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
+    
+    setClients(savedClients.slice(0, 5))
+    setWorkouts(savedWorkouts.slice(0, 5))
+    setStats({
+      clients: savedClients.length,
+      workouts: savedWorkouts.length
+    })
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -46,19 +29,12 @@ export default async function DashboardPage() {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <h1 className="text-xl font-semibold">
-                {userData?.organizations?.name || 'Workout Platform'}
+                Workout Platform
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Link 
-                href="/settings"
-                className="text-gray-500 hover:text-gray-700"
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </Link>
               <span className="text-sm text-gray-700">
-                {userData?.full_name || user.email}
+                AI Workout Generator
               </span>
             </div>
           </div>
@@ -96,11 +72,11 @@ export default async function DashboardPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-900">{clientCount || 0}</div>
+            <div className="text-2xl font-bold text-gray-900">{stats.clients}</div>
             <div className="text-sm text-gray-500">Total Clients</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-900">{workoutCount || 0}</div>
+            <div className="text-2xl font-bold text-gray-900">{stats.workouts}</div>
             <div className="text-sm text-gray-500">Workouts Created</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">

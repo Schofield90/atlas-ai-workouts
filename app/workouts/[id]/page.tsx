@@ -1,36 +1,43 @@
-import { createServerClient } from '@/lib/db/server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
 import WorkoutViewer from './workout-viewer'
 
-export default async function WorkoutPage({ 
+export default function WorkoutPage({ 
   params 
 }: { 
   params: Promise<{ id: string }> 
 }) {
-  const { id } = await params
-  const supabase = await createServerClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { id } = use(params)
+  const router = useRouter()
+  const [workout, setWorkout] = useState<any>(null)
 
-  // Fetch workout with client details
-  const { data: workout, error } = await supabase
-    .from('workouts')
-    .select(`
-      *,
-      clients (
-        full_name,
-        email,
-        goals,
-        injuries,
-        equipment
-      )
-    `)
-    .eq('id', id)
-    .single()
+  useEffect(() => {
+    // Load workout from localStorage
+    const workouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
+    const foundWorkout = workouts.find((w: any) => w.id === id || w.workoutId === id)
+    
+    if (foundWorkout) {
+      // Ensure workout has proper structure
+      const formattedWorkout = {
+        ...foundWorkout,
+        plan: foundWorkout.plan || foundWorkout,
+        clients: foundWorkout.client || { full_name: 'Guest User' }
+      }
+      setWorkout(formattedWorkout)
+    } else {
+      // Redirect if workout not found
+      router.push('/dashboard')
+    }
+  }, [id, router])
 
-  if (error || !workout) {
-    redirect('/dashboard')
+  if (!workout) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return <WorkoutViewer workout={workout} />
