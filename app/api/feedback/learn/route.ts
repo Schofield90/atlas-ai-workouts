@@ -33,7 +33,11 @@ export async function POST(request: NextRequest) {
       { temperature: 0.3, jsonMode: true }
     )
 
-    let preferences = {}
+    let preferences: any = {
+      preferences: {},
+      patterns: [],
+      recommendations: []
+    }
     try {
       preferences = JSON.parse(feedbackAnalysis.content)
     } catch (e) {
