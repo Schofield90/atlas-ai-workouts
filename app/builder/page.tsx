@@ -1,0 +1,265 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/db/client'
+import { Loader2, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
+
+export default function BuilderPage() {
+  const router = useRouter()
+  const supabase = createClient()
+  
+  const [title, setTitle] = useState('')
+  const [selectedClient, setSelectedClient] = useState<string>('')
+  const [clients, setClients] = useState<any[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [duration, setDuration] = useState(60)
+  const [intensity, setIntensity] = useState('moderate')
+  const [focus, setFocus] = useState('')
+  const [equipment, setEquipment] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadClients()
+  }, [])
+
+  async function loadClients() {
+    const { data } = await supabase
+      .from('clients')
+      .select('id, full_name')
+      .order('full_name')
+    
+    if (data) {
+      setClients(data)
+      // Select first client by default if exists
+      if (data.length > 0 && !selectedClient) {
+        setSelectedClient(data[0].id)
+      }
+    }
+  }
+
+  async function generateWorkout() {
+    if (!title.trim()) {
+      setError('Please enter a workout name')
+      return
+    }
+    
+    if (!selectedClient) {
+      setError('Please select a client')
+      return
+    }
+
+    setGenerating(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/workouts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          clientId: selectedClient,
+          duration,
+          intensity,
+          focus: focus || undefined,
+          equipment: equipment ? equipment.split(',').map(e => e.trim()) : undefined,
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate workout')
+      }
+
+      // Navigate to the created workout
+      router.push(`/workouts/${data.workoutId}`)
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate workout')
+      setGenerating(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <a href="/dashboard" className="text-gray-500 hover:text-gray-700 mr-4">
+                ← Back
+              </a>
+              <h1 className="text-xl font-semibold">Workout Builder</h1>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-white rounded-lg shadow-xl p-8">
+          <div className="flex items-center mb-6">
+            <Dumbbell className="h-8 w-8 text-blue-600 mr-3" />
+            <h2 className="text-2xl font-bold">Create AI Workout</h2>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* Workout Title - Required */}
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                Workout Name *
+              </label>
+              <input
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Upper Body Strength, HIIT Cardio, Full Body"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={generating}
+                autoFocus
+              />
+            </div>
+
+            {/* Client Selection */}
+            <div>
+              <label htmlFor="client" className="block text-sm font-medium text-gray-700 mb-1">
+                Select Client *
+              </label>
+              <select
+                id="client"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={generating}
+              >
+                {clients.length === 0 ? (
+                  <option value="">No clients yet - add a client first</option>
+                ) : (
+                  <>
+                    <option value="">Choose a client...</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.full_name}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+
+            {/* Advanced Options */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+            >
+              {showAdvanced ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+              Advanced Options
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-md">
+                <div>
+                  <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
+                    Duration (minutes)
+                  </label>
+                  <input
+                    id="duration"
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
+                    min="15"
+                    max="120"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={generating}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="intensity" className="block text-sm font-medium text-gray-700 mb-1">
+                    Intensity Level
+                  </label>
+                  <select
+                    id="intensity"
+                    value={intensity}
+                    onChange={(e) => setIntensity(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={generating}
+                  >
+                    <option value="light">Light</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="intense">Intense</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="focus" className="block text-sm font-medium text-gray-700 mb-1">
+                    Focus Area (optional)
+                  </label>
+                  <input
+                    id="focus"
+                    type="text"
+                    value={focus}
+                    onChange={(e) => setFocus(e.target.value)}
+                    placeholder="e.g., legs, chest and triceps, cardio endurance"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={generating}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="equipment" className="block text-sm font-medium text-gray-700 mb-1">
+                    Available Equipment Today (optional)
+                  </label>
+                  <input
+                    id="equipment"
+                    type="text"
+                    value={equipment}
+                    onChange={(e) => setEquipment(e.target.value)}
+                    placeholder="e.g., dumbbells, barbell, pull-up bar"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={generating}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave blank to use client's default equipment
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Generate Button */}
+            <button
+              onClick={generateWorkout}
+              disabled={generating || !title.trim() || !selectedClient}
+              className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="inline h-4 w-4 mr-2 animate-spin" />
+                  Generating Personalized Workout...
+                </>
+              ) : (
+                'Generate Workout'
+              )}
+            </button>
+          </div>
+
+          {generating && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-md">
+              <p className="text-sm text-blue-700">
+                AI is analyzing client history, preferences, and recent feedback to create the perfect workout...
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
