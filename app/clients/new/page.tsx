@@ -56,13 +56,15 @@ export default function NewClientPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: userData } = await supabase
+      let { data: userData } = await supabase
         .from('users')
         .select('organization_id')
         .eq('id', user.id)
         .single()
 
-      if (!userData?.organization_id) {
+      let organizationId = userData?.organization_id
+
+      if (!organizationId) {
         // Create default organization if none exists
         const { data: org, error: orgError } = await supabase
           .from('organizations')
@@ -81,14 +83,14 @@ export default function NewClientPage() {
           .update({ organization_id: org.id })
           .eq('id', user.id)
 
-        userData.organization_id = org.id
+        organizationId = org.id
       }
 
       // Create client
       const { data: client, error: clientError } = await supabase
         .from('clients')
         .insert({
-          organization_id: userData.organization_id,
+          organization_id: organizationId,
           full_name: formData.full_name,
           email: formData.email || null,
           age: formData.age ? parseInt(formData.age) : null,
