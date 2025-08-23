@@ -68,85 +68,127 @@ export default function ClientsPage() {
     try {
       console.log(`Processing file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
       
-      // Convert file to base64 for large files to avoid upload size limits
-      const MAX_DIRECT_SIZE = 3 * 1024 * 1024 // 3MB
-      let data
+      // For all Excel files, process them client-side to avoid upload size limits
+      console.log('Processing Excel file locally...')
       
-      if (file.size > MAX_DIRECT_SIZE) {
-        // For large files, convert to base64 and send as JSON
-        console.log('Large file detected, converting to base64...')
-        
-        const reader = new FileReader()
-        const base64Promise = new Promise<string>((resolve, reject) => {
-          reader.onload = () => {
-            const base64 = reader.result as string
-            // Remove the data:application/...;base64, prefix
-            const base64Data = base64.split(',')[1]
-            resolve(base64Data)
-          }
-          reader.onerror = reject
-        })
-        
-        reader.readAsDataURL(file)
-        const base64Data = await base64Promise
-        
-        console.log('Sending base64 data to server...')
-        const response = await fetch('/api/clients/import-excel-base64', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: file.name,
-            fileData: base64Data
-          })
-        })
-        
-        const contentType = response.headers.get('content-type')
-        
-        if (!response.ok) {
-          if (contentType?.includes('application/json')) {
-            const error = await response.json()
-            throw new Error(error.error || error.details || 'Failed to import Excel file')
-          } else {
-            const text = await response.text()
-            console.error('Non-JSON response:', text.substring(0, 200))
-            throw new Error(`Server error: ${response.status} ${response.statusText}`)
-          }
+      // Dynamically import XLSX library for client-side processing
+      const XLSX = await import('xlsx')
+      
+      // Read file as array buffer
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      
+      console.log(`Found ${workbook.SheetNames.length} sheets in workbook`)
+      
+      const clientsData = []
+      const skippedSheets = []
+      
+      // Process each sheet as a client
+      for (const sheetName of workbook.SheetNames) {
+        // Skip master/template sheets
+        if (sheetName.toLowerCase().includes('master') || 
+            sheetName.toLowerCase().includes('copy') ||
+            sheetName.toLowerCase().includes('template')) {
+          skippedSheets.push(sheetName)
+          continue
         }
         
-        data = await response.json()
-      } else {
-        // Use direct upload for small files
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/clients/import-excel', {
-          method: 'POST',
-          body: formData
-        })
-
-        const contentType = response.headers.get('content-type')
+        const sheet = workbook.Sheets[sheetName]
+        const data = XLSX.utils.sheet_to_json(sheet, { 
+          header: 1,
+          defval: '',
+          blankrows: false 
+        }) as any[][]
         
-        if (!response.ok) {
-          if (contentType?.includes('application/json')) {
-            const error = await response.json()
-            throw new Error(error.error || error.details || 'Failed to import Excel file')
-          } else {
-            const text = await response.text()
-            console.error('Non-JSON response:', text.substring(0, 200))
-            throw new Error(`Server error: ${response.status} ${response.statusText}`)
+        if (!data || data.length === 0) {
+          continue
+        }
+        
+        // Extract client information from specific cells
+        const injuries = data[0]?.[0]?.toString() || '' // A1
+        const goals = data[0]?.[2]?.toString() || '' // C1
+        const membership = data[0]?.[3]?.toString() || '' // D1
+        const additionalInfo = data[0]?.[4]?.toString() || '' // E1
+        
+        // Extract workout history (first 5 workouts only to reduce size)
+        const workoutHistory = []
+        for (let i = 1; i < Math.min(data.length, 6); i++) {
+          const row = data[i]
+          if (row && row[0]) {
+            const date = row[0]
+            const workout = row[1]
+            if (date && workout) {
+              workoutHistory.push(`${date}: ${workout}`)
+            }
           }
         }
-
-        if (!contentType?.includes('application/json')) {
-          const text = await response.text()
-          console.error('Expected JSON but got:', text.substring(0, 200))
-          throw new Error('Server returned non-JSON response')
+        
+        // Clean up the extracted data
+        const cleanedInjuries = injuries.replace(/injuries?:?/gi, '').trim()
+        const cleanedGoals = goals.replace(/goals?:?/gi, '').trim()
+        
+        // Build notes from workout history
+        let notes = ''
+        if (membership) {
+          notes += `Membership: ${membership}\n`
         }
-
-        data = await response.json()
+        if (additionalInfo) {
+          notes += `${additionalInfo}\n`
+        }
+        if (workoutHistory.length > 0) {
+          notes += `\nRecent Workouts:\n${workoutHistory.join('\n')}`
+        }
+        
+        const clientData = {
+          full_name: sheetName.trim(),
+          goals: cleanedGoals,
+          injuries: cleanedInjuries,
+          notes: notes.trim()
+        }
+        
+        // Only add if we have a valid name
+        if (clientData.full_name && !clientData.full_name.toLowerCase().includes('sheet')) {
+          clientsData.push(clientData)
+        }
       }
+      
+      console.log(`Extracted ${clientsData.length} clients from Excel`)
+      
+      if (clientsData.length === 0) {
+        throw new Error(`No valid client sheets found. Processed ${workbook.SheetNames.length} sheets, skipped: ${skippedSheets.join(', ')}`)
+      }
+      
+      // Send only the extracted data to the server
+      const response = await fetch('/api/clients/import-processed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clients: clientsData,
+          debug: {
+            totalSheets: workbook.SheetNames.length,
+            processedClients: clientsData.length,
+            skippedSheets: skippedSheets,
+            sheetNames: workbook.SheetNames
+          }
+        })
+      })
+      
+      const contentType = response.headers.get('content-type')
+      
+      if (!response.ok) {
+        if (contentType?.includes('application/json')) {
+          const error = await response.json()
+          throw new Error(error.error || error.details || 'Failed to import clients')
+        } else {
+          const text = await response.text()
+          console.error('Non-JSON response:', text.substring(0, 200))
+          throw new Error(`Server error: ${response.status} ${response.statusText}`)
+        }
+      }
+      
+      const data = await response.json()
       
       // Show debug info
       if (data.debug) {
