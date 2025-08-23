@@ -66,20 +66,88 @@ export default function ClientsPage() {
     setImportStatus(null)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      // Check file size - if over 3MB, use chunked upload
+      const MAX_DIRECT_SIZE = 3 * 1024 * 1024 // 3MB
+      let data
+      
+      if (file.size > MAX_DIRECT_SIZE) {
+        // Use chunked upload for large files
+        console.log(`File size ${(file.size / 1024 / 1024).toFixed(2)}MB - using chunked upload`)
+        
+        const CHUNK_SIZE = 1024 * 1024 // 1MB chunks
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+        const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        
+        // Upload chunks
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * CHUNK_SIZE
+          const end = Math.min(start + CHUNK_SIZE, file.size)
+          const chunk = file.slice(start, end)
+          
+          const chunkFormData = new FormData()
+          chunkFormData.append('action', 'chunk')
+          chunkFormData.append('uploadId', uploadId)
+          chunkFormData.append('chunk', chunk)
+          chunkFormData.append('chunkIndex', i.toString())
+          
+          const chunkResponse = await fetch('/api/clients/import-excel-chunked', {
+            method: 'POST',
+            body: chunkFormData
+          })
+          
+          if (!chunkResponse.ok) {
+            throw new Error(`Failed to upload chunk ${i + 1}/${totalChunks}`)
+          }
+        }
+        
+        // Complete the upload
+        const completeFormData = new FormData()
+        completeFormData.append('action', 'complete')
+        completeFormData.append('uploadId', uploadId)
+        completeFormData.append('totalChunks', totalChunks.toString())
+        
+        const response = await fetch('/api/clients/import-excel-chunked', {
+          method: 'POST',
+          body: completeFormData
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to process Excel file')
+        }
+        
+        data = await response.json()
+      } else {
+        // Use direct upload for small files
+        const formData = new FormData()
+        formData.append('file', file)
 
-      const response = await fetch('/api/clients/import-excel', {
-        method: 'POST',
-        body: formData
-      })
+        const response = await fetch('/api/clients/import-excel', {
+          method: 'POST',
+          body: formData
+        })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to import Excel file')
+        const contentType = response.headers.get('content-type')
+        
+        if (!response.ok) {
+          if (contentType?.includes('application/json')) {
+            const error = await response.json()
+            throw new Error(error.error || error.details || 'Failed to import Excel file')
+          } else {
+            const text = await response.text()
+            console.error('Non-JSON response:', text.substring(0, 200))
+            throw new Error(`Server error: ${response.status} ${response.statusText}`)
+          }
+        }
+
+        if (!contentType?.includes('application/json')) {
+          const text = await response.text()
+          console.error('Expected JSON but got:', text.substring(0, 200))
+          throw new Error('Server returned non-JSON response')
+        }
+
+        data = await response.json()
       }
-
-      const data = await response.json()
       
       // Show debug info
       if (data.debug) {
@@ -129,8 +197,23 @@ export default function ClientsPage() {
         body: formData
       })
 
+      const contentType = response.headers.get('content-type')
+      
       if (!response.ok) {
-        throw new Error('Failed to import clients')
+        if (contentType?.includes('application/json')) {
+          const error = await response.json()
+          throw new Error(error.error || error.details || 'Failed to import clients')
+        } else {
+          const text = await response.text()
+          console.error('Non-JSON response:', text.substring(0, 200))
+          throw new Error(`Server error: ${response.status} ${response.statusText}`)
+        }
+      }
+
+      if (!contentType?.includes('application/json')) {
+        const text = await response.text()
+        console.error('Expected JSON but got:', text.substring(0, 200))
+        throw new Error('Server returned non-JSON response')
       }
 
       const data = await response.json()
