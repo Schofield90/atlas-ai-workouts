@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import mammoth from 'mammoth'
-import pdfParse from 'pdf-parse'
 import { parse } from 'csv-parse/sync'
 
 export async function POST(request: NextRequest) {
@@ -52,6 +51,8 @@ export async function POST(request: NextRequest) {
     } else if (fileType.includes('pdf') || file.name.endsWith('.pdf')) {
       // PDF files
       try {
+        // Dynamic import to avoid build issues
+        const pdfParse = (await import('pdf-parse')).default
         const data = await pdfParse(buffer)
         content = data.text
       } catch (error) {
