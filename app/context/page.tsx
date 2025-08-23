@@ -27,12 +27,22 @@ interface ContextDocument {
   size: number
 }
 
+interface TextSection {
+  id: string
+  title: string
+  content: string
+  category: 'sop' | 'chat' | 'guide' | 'notes'
+  createdAt: string
+  updatedAt: string
+}
+
 interface ProjectContext {
   id: string
   name: string
   description: string
   documents: ContextDocument[]
-  textContext: string
+  textContext: string // Legacy support
+  textSections: TextSection[] // New: multiple text sections
   createdAt: string
   updatedAt: string
 }
@@ -45,6 +55,14 @@ export default function ContextPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // New states for text sections
+  const [showAddTextSection, setShowAddTextSection] = useState(false)
+  const [newSectionTitle, setNewSectionTitle] = useState('')
+  const [newSectionContent, setNewSectionContent] = useState('')
+  const [newSectionCategory, setNewSectionCategory] = useState<TextSection['category']>('sop')
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null)
+  const [editingSectionContent, setEditingSectionContent] = useState('')
 
   useEffect(() => {
     loadProjects()
@@ -77,6 +95,7 @@ export default function ContextPage() {
       description: '',
       documents: [],
       textContext: '',
+      textSections: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -212,12 +231,94 @@ export default function ContextPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  function addTextSection() {
+    if (!activeProject || !newSectionTitle.trim() || !newSectionContent.trim()) return
+
+    const newSection: TextSection = {
+      id: `section-${Date.now()}`,
+      title: newSectionTitle,
+      content: newSectionContent,
+      category: newSectionCategory,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    const updated = projects.map(p => 
+      p.id === activeProject.id 
+        ? { 
+            ...p, 
+            textSections: [...(p.textSections || []), newSection],
+            updatedAt: new Date().toISOString()
+          }
+        : p
+    )
+    saveProjects(updated)
+    setActiveProject(updated.find(p => p.id === activeProject.id)!)
+    
+    // Reset form
+    setNewSectionTitle('')
+    setNewSectionContent('')
+    setNewSectionCategory('sop')
+    setShowAddTextSection(false)
+    setUploadStatus({ type: 'success', message: 'Text section added successfully!' })
+    setTimeout(() => setUploadStatus(null), 3000)
+  }
+
+  function updateTextSection(sectionId: string, newContent: string) {
+    if (!activeProject) return
+
+    const updated = projects.map(p => 
+      p.id === activeProject.id 
+        ? { 
+            ...p, 
+            textSections: p.textSections?.map(s => 
+              s.id === sectionId 
+                ? { ...s, content: newContent, updatedAt: new Date().toISOString() }
+                : s
+            ) || [],
+            updatedAt: new Date().toISOString()
+          }
+        : p
+    )
+    saveProjects(updated)
+    setActiveProject(updated.find(p => p.id === activeProject.id)!)
+    setEditingSectionId(null)
+    setEditingSectionContent('')
+  }
+
+  function deleteTextSection(sectionId: string) {
+    if (!activeProject || !confirm('Delete this text section?')) return
+
+    const updated = projects.map(p => 
+      p.id === activeProject.id 
+        ? { 
+            ...p, 
+            textSections: p.textSections?.filter(s => s.id !== sectionId) || [],
+            updatedAt: new Date().toISOString()
+          }
+        : p
+    )
+    saveProjects(updated)
+    setActiveProject(updated.find(p => p.id === activeProject.id)!)
+  }
+
+  function getCategoryIcon(category: TextSection['category']) {
+    switch(category) {
+      case 'sop': return '📋'
+      case 'chat': return '💬'
+      case 'guide': return '📖'
+      case 'notes': return '📝'
+      default: return '📄'
+    }
+  }
+
   function exportContext() {
     if (!activeProject) return
 
     const contextData = {
       project: activeProject.name,
       textContext: activeProject.textContext,
+      textSections: activeProject.textSections || [],
       documents: activeProject.documents.map(d => ({
         name: d.name,
         content: d.content
@@ -328,45 +429,139 @@ export default function ContextPage() {
                   </p>
                 </div>
 
-                {/* Text Context */}
+                {/* Text Sections (SOPs, Chats, Guides) */}
                 <div className="bg-white rounded-lg shadow">
                   <div className="p-4 border-b flex items-center justify-between">
-                    <h3 className="font-semibold">Text Context</h3>
-                    {!isEditing ? (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={saveTextContext}
-                        className="text-green-600 hover:text-green-700"
-                      >
-                        <Save className="h-4 w-4" />
-                      </button>
-                    )}
+                    <h3 className="font-semibold">Knowledge Base</h3>
+                    <button
+                      onClick={() => setShowAddTextSection(true)}
+                      className="text-blue-600 hover:text-blue-700 flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Section
+                    </button>
                   </div>
+                  
+                  {/* Add New Section Form */}
+                  {showAddTextSection && (
+                    <div className="p-4 bg-blue-50 border-b">
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Section title (e.g., 'ChatGPT Strength Training Discussion')"
+                            value={newSectionTitle}
+                            onChange={(e) => setNewSectionTitle(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <select
+                            value={newSectionCategory}
+                            onChange={(e) => setNewSectionCategory(e.target.value as TextSection['category'])}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="sop">📋 SOP</option>
+                            <option value="chat">💬 Chat Export</option>
+                            <option value="guide">📖 Guide</option>
+                            <option value="notes">📝 Notes</option>
+                          </select>
+                        </div>
+                        <textarea
+                          placeholder="Paste your ChatGPT conversation, SOP content, or any training knowledge here..."
+                          value={newSectionContent}
+                          onChange={(e) => setNewSectionContent(e.target.value)}
+                          className="w-full h-48 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              setShowAddTextSection(false)
+                              setNewSectionTitle('')
+                              setNewSectionContent('')
+                            }}
+                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={addTextSection}
+                            disabled={!newSectionTitle.trim() || !newSectionContent.trim()}
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+                          >
+                            Add Section
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Text Sections List */}
                   <div className="p-4">
-                    {isEditing ? (
-                      <textarea
-                        value={textContext}
-                        onChange={(e) => setTextContext(e.target.value)}
-                        placeholder="Add context here... Include training philosophy, specific client needs, gym equipment available, preferred workout styles, injury considerations, etc."
-                        className="w-full h-64 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                    {activeProject?.textSections && activeProject.textSections.length > 0 ? (
+                      <div className="space-y-3">
+                        {activeProject.textSections.map((section) => (
+                          <div key={section.id} className="border rounded-lg overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-lg">{getCategoryIcon(section.category)}</span>
+                                <div>
+                                  <h4 className="font-medium text-gray-900">{section.title}</h4>
+                                  <p className="text-xs text-gray-500">
+                                    Added {new Date(section.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {editingSectionId === section.id ? (
+                                  <button
+                                    onClick={() => updateTextSection(section.id, editingSectionContent)}
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    <Save className="h-4 w-4" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setEditingSectionId(section.id)
+                                      setEditingSectionContent(section.content)
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => deleteTextSection(section.id)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="p-4">
+                              {editingSectionId === section.id ? (
+                                <textarea
+                                  value={editingSectionContent}
+                                  onChange={(e) => setEditingSectionContent(e.target.value)}
+                                  className="w-full h-32 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              ) : (
+                                <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 max-h-32 overflow-y-auto">
+                                  {section.content.length > 300 
+                                    ? section.content.substring(0, 300) + '...' 
+                                    : section.content}
+                                </pre>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
-                      <div className="prose max-w-none">
-                        {textContext ? (
-                          <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">
-                            {textContext}
-                          </pre>
-                        ) : (
-                          <p className="text-gray-500 italic">
-                            No text context added yet. Click edit to add context.
-                          </p>
-                        )}
+                      <div className="text-center py-8">
+                        <Brain className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500">No knowledge sections added yet</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Add ChatGPT conversations, SOPs, guides, or training notes
+                        </p>
                       </div>
                     )}
                   </div>
@@ -452,10 +647,11 @@ export default function ContextPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-semibold text-blue-900 mb-2">Context Summary</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Text context: {textContext ? `${textContext.length} characters` : 'Not added'}</li>
+                    <li>• Knowledge sections: {(activeProject.textSections || []).length} sections</li>
                     <li>• Documents: {activeProject.documents.length} files</li>
                     <li>• Total content: {
-                      (textContext.length + activeProject.documents.reduce((acc, d) => acc + d.content.length, 0)).toLocaleString()
+                      ((activeProject.textSections || []).reduce((acc, s) => acc + s.content.length, 0) + 
+                       activeProject.documents.reduce((acc, d) => acc + d.content.length, 0)).toLocaleString()
                     } characters</li>
                   </ul>
                   <p className="text-xs text-blue-600 mt-3">

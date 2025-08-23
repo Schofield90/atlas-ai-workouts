@@ -23,10 +23,30 @@ export async function POST(request: NextRequest) {
     if (context) {
       prompt += `CONTEXT AND BACKGROUND:\n`
       
+      // Add legacy text context if exists
       if (context.textContext) {
         prompt += `${context.textContext}\n\n`
       }
       
+      // Add new text sections (SOPs, ChatGPT conversations, etc.)
+      if (context.textSections && context.textSections.length > 0) {
+        prompt += `KNOWLEDGE BASE:\n`
+        context.textSections.forEach((section: any) => {
+          const categoryLabels: Record<string, string> = {
+            'sop': 'SOP',
+            'chat': 'Chat Export',
+            'guide': 'Training Guide',
+            'notes': 'Notes'
+          }
+          const categoryLabel = categoryLabels[section.category] || 'Context'
+          
+          prompt += `\n[${categoryLabel}: ${section.title}]\n`
+          prompt += `${section.content.substring(0, 3000)}\n`
+        })
+        prompt += `\n`
+      }
+      
+      // Add uploaded documents
       if (context.documents && context.documents.length > 0) {
         prompt += `REFERENCE DOCUMENTS:\n`
         context.documents.forEach((doc: any) => {
