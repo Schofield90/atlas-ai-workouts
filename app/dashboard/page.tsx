@@ -53,11 +53,11 @@ export default function DashboardPage() {
           </Link>
           
           <Link
-            href="/clients/new"
+            href="/clients"
             className="flex items-center justify-center p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             <Users className="h-5 w-5 mr-2" />
-            <span className="font-medium">Add Client</span>
+            <span className="font-medium">Manage Clients</span>
           </Link>
           
           <Link
