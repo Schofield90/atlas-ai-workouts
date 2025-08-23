@@ -66,54 +66,53 @@ export default function ClientsPage() {
     setImportStatus(null)
 
     try {
-      // Check file size - if over 3MB, use chunked upload
+      console.log(`Processing file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+      
+      // Convert file to base64 for large files to avoid upload size limits
       const MAX_DIRECT_SIZE = 3 * 1024 * 1024 // 3MB
       let data
       
       if (file.size > MAX_DIRECT_SIZE) {
-        // Use chunked upload for large files
-        console.log(`File size ${(file.size / 1024 / 1024).toFixed(2)}MB - using chunked upload`)
+        // For large files, convert to base64 and send as JSON
+        console.log('Large file detected, converting to base64...')
         
-        const CHUNK_SIZE = 1024 * 1024 // 1MB chunks
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-        const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        
-        // Upload chunks
-        for (let i = 0; i < totalChunks; i++) {
-          const start = i * CHUNK_SIZE
-          const end = Math.min(start + CHUNK_SIZE, file.size)
-          const chunk = file.slice(start, end)
-          
-          const chunkFormData = new FormData()
-          chunkFormData.append('action', 'chunk')
-          chunkFormData.append('uploadId', uploadId)
-          chunkFormData.append('chunk', chunk)
-          chunkFormData.append('chunkIndex', i.toString())
-          
-          const chunkResponse = await fetch('/api/clients/import-excel-chunked', {
-            method: 'POST',
-            body: chunkFormData
-          })
-          
-          if (!chunkResponse.ok) {
-            throw new Error(`Failed to upload chunk ${i + 1}/${totalChunks}`)
+        const reader = new FileReader()
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = reader.result as string
+            // Remove the data:application/...;base64, prefix
+            const base64Data = base64.split(',')[1]
+            resolve(base64Data)
           }
-        }
-        
-        // Complete the upload
-        const completeFormData = new FormData()
-        completeFormData.append('action', 'complete')
-        completeFormData.append('uploadId', uploadId)
-        completeFormData.append('totalChunks', totalChunks.toString())
-        
-        const response = await fetch('/api/clients/import-excel-chunked', {
-          method: 'POST',
-          body: completeFormData
+          reader.onerror = reject
         })
         
+        reader.readAsDataURL(file)
+        const base64Data = await base64Promise
+        
+        console.log('Sending base64 data to server...')
+        const response = await fetch('/api/clients/import-excel-base64', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileData: base64Data
+          })
+        })
+        
+        const contentType = response.headers.get('content-type')
+        
         if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Failed to process Excel file')
+          if (contentType?.includes('application/json')) {
+            const error = await response.json()
+            throw new Error(error.error || error.details || 'Failed to import Excel file')
+          } else {
+            const text = await response.text()
+            console.error('Non-JSON response:', text.substring(0, 200))
+            throw new Error(`Server error: ${response.status} ${response.statusText}`)
+          }
         }
         
         data = await response.json()

@@ -4,25 +4,18 @@ import * as XLSX from 'xlsx'
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-// Increase the body size limit for this route
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
+    const { fileName, fileData } = await request.json()
     
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    if (!fileData) {
+      return NextResponse.json({ error: 'No file data provided' }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    // Convert base64 to buffer
+    const buffer = Buffer.from(fileData, 'base64')
+    console.log(`Processing Excel file: ${fileName}, buffer size: ${buffer.length}`)
+    
     const workbook = XLSX.read(buffer, { type: 'buffer' })
     
     const clients = []
