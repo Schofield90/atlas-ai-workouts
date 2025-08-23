@@ -177,7 +177,7 @@ export default function BuilderPage() {
                 <option value="">No context selected</option>
                 {contexts.map((context) => (
                   <option key={context.id} value={context.id}>
-                    {context.name} ({context.documents.length} docs)
+                    {context.name} {context.documents ? `(${context.documents.length} docs)` : ''}
                   </option>
                 ))}
               </select>
