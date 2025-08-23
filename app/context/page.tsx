@@ -71,7 +71,11 @@ export default function ContextPage() {
   function loadProjects() {
     const saved = localStorage.getItem('ai-workout-contexts')
     if (saved) {
-      const contexts = JSON.parse(saved)
+      const contexts = JSON.parse(saved).map((ctx: any) => ({
+        ...ctx,
+        documents: ctx.documents || [],
+        textSections: ctx.textSections || []
+      }))
       setProjects(contexts)
       if (contexts.length > 0 && !activeProject) {
         setActiveProject(contexts[0])
@@ -319,7 +323,7 @@ export default function ContextPage() {
       project: activeProject.name,
       textContext: activeProject.textContext,
       textSections: activeProject.textSections || [],
-      documents: activeProject.documents.map(d => ({
+      documents: (activeProject.documents || []).map(d => ({
         name: d.name,
         content: d.content
       }))
@@ -612,7 +616,7 @@ export default function ContextPage() {
                       </div>
                     )}
 
-                    {activeProject.documents.length > 0 && (
+                    {activeProject.documents && activeProject.documents.length > 0 && (
                       <div className="mt-6">
                         <h4 className="text-sm font-semibold text-gray-700 mb-3">
                           Uploaded Documents ({activeProject.documents.length})
@@ -648,10 +652,10 @@ export default function ContextPage() {
                   <h4 className="font-semibold text-blue-900 mb-2">Context Summary</h4>
                   <ul className="text-sm text-blue-800 space-y-1">
                     <li>• Knowledge sections: {(activeProject.textSections || []).length} sections</li>
-                    <li>• Documents: {activeProject.documents.length} files</li>
+                    <li>• Documents: {activeProject.documents?.length || 0} files</li>
                     <li>• Total content: {
                       ((activeProject.textSections || []).reduce((acc, s) => acc + s.content.length, 0) + 
-                       activeProject.documents.reduce((acc, d) => acc + d.content.length, 0)).toLocaleString()
+                       (activeProject.documents || []).reduce((acc, d) => acc + d.content.length, 0)).toLocaleString()
                     } characters</li>
                   </ul>
                   <p className="text-xs text-blue-600 mt-3">
