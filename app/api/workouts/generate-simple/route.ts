@@ -6,7 +6,7 @@ import { WorkoutPlanSchema } from '@/lib/ai/schema'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [] } = body
+    const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context } = body
 
     // Get client from localStorage (this is passed from frontend)
     const client = body.client || {
@@ -16,8 +16,28 @@ export async function POST(request: NextRequest) {
       equipment: equipment
     }
 
-    // Build prompt
-    const prompt = `Generate a workout plan for:
+    // Build prompt with context
+    let prompt = ''
+    
+    // Add project context if provided
+    if (context) {
+      prompt += `CONTEXT AND BACKGROUND:\n`
+      
+      if (context.textContext) {
+        prompt += `${context.textContext}\n\n`
+      }
+      
+      if (context.documents && context.documents.length > 0) {
+        prompt += `REFERENCE DOCUMENTS:\n`
+        context.documents.forEach((doc: any) => {
+          prompt += `[${doc.name}]:\n${doc.content.substring(0, 2000)}\n\n`
+        })
+      }
+      
+      prompt += `---\n\n`
+    }
+    
+    prompt += `Generate a workout plan for:
 
 Client: ${client.full_name}
 Title: ${title}

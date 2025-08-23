@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Users, Dumbbell, ChartBar, Settings } from 'lucide-react'
+import { Plus, Users, Dumbbell, ChartBar, Settings, Brain } from 'lucide-react'
 
 export default function DashboardPage() {
   const [clients, setClients] = useState<any[]>([])
@@ -43,7 +43,7 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Link
             href="/builder"
             className="flex items-center justify-center p-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -61,11 +61,19 @@ export default function DashboardPage() {
           </Link>
           
           <Link
+            href="/context"
+            className="flex items-center justify-center p-6 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <Brain className="h-5 w-5 mr-2" />
+            <span className="font-medium">Manage Context</span>
+          </Link>
+          
+          <Link
             href="/workouts"
             className="flex items-center justify-center p-6 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
             <Dumbbell className="h-5 w-5 mr-2" />
-            <span className="font-medium">View All Workouts</span>
+            <span className="font-medium">View Workouts</span>
           </Link>
         </div>
 

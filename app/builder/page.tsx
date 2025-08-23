@@ -17,9 +17,12 @@ export default function BuilderPage() {
   const [equipment, setEquipment] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  const [selectedContext, setSelectedContext] = useState<any>(null)
+  const [contexts, setContexts] = useState<any[]>([])
 
   useEffect(() => {
     loadClients()
+    loadContexts()
   }, [])
 
   function loadClients() {
@@ -28,6 +31,15 @@ export default function BuilderPage() {
     // Select first client by default if exists
     if (savedClients.length > 0 && !selectedClient) {
       setSelectedClient(savedClients[0].id)
+    }
+  }
+
+  function loadContexts() {
+    const savedContexts = JSON.parse(localStorage.getItem('ai-workout-contexts') || '[]')
+    setContexts(savedContexts)
+    // Select first context by default if exists
+    if (savedContexts.length > 0 && !selectedContext) {
+      setSelectedContext(savedContexts[0])
     }
   }
 
@@ -57,6 +69,7 @@ export default function BuilderPage() {
           intensity,
           focus: focus || undefined,
           equipment: equipment ? equipment.split(',').map(e => e.trim()) : [],
+          context: selectedContext || null,
         }),
       })
 
@@ -146,6 +159,37 @@ export default function BuilderPage() {
               </select>
             </div>
 
+            {/* Context Selection */}
+            <div>
+              <label htmlFor="context" className="block text-sm font-medium text-gray-700 mb-1">
+                Training Context (optional)
+              </label>
+              <select
+                id="context"
+                value={selectedContext?.id || ''}
+                onChange={(e) => {
+                  const context = contexts.find(c => c.id === e.target.value)
+                  setSelectedContext(context || null)
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={generating}
+              >
+                <option value="">No context selected</option>
+                {contexts.map((context) => (
+                  <option key={context.id} value={context.id}>
+                    {context.name} ({context.documents.length} docs)
+                  </option>
+                ))}
+              </select>
+              {contexts.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  <a href="/context" className="text-blue-600 hover:underline">
+                    Add context
+                  </a> to provide training philosophy, equipment lists, or reference materials
+                </p>
+              )}
+            </div>
+
             {/* Advanced Options */}
             <button
               type="button"
@@ -229,7 +273,7 @@ export default function BuilderPage() {
             {/* Generate Button */}
             <button
               onClick={generateWorkout}
-              disabled={generating || !title.trim() || !selectedClient}
+              disabled={generating || !title.trim()}
               className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {generating ? (
