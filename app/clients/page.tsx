@@ -34,6 +34,7 @@ export default function ClientsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const excelInputRef = useRef<HTMLInputElement>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     loadClients()
@@ -55,6 +56,57 @@ export default function ClientsPage() {
     if (!confirm('Are you sure you want to delete this client?')) return
     
     const updated = clients.filter(c => c.id !== clientId)
+    saveClients(updated)
+  }
+
+  function toggleSelectClient(clientId: string) {
+    const newSelected = new Set(selectedClients)
+    if (newSelected.has(clientId)) {
+      newSelected.delete(clientId)
+    } else {
+      newSelected.add(clientId)
+    }
+    setSelectedClients(newSelected)
+  }
+
+  function selectAllVisible() {
+    const visibleClientIds = filteredClients.map(c => c.id)
+    setSelectedClients(new Set(visibleClientIds))
+  }
+
+  function clearSelection() {
+    setSelectedClients(new Set())
+  }
+
+  function deleteSelected() {
+    if (selectedClients.size === 0) return
+    
+    const message = selectedClients.size === 1 
+      ? 'Are you sure you want to delete this client?' 
+      : `Are you sure you want to delete ${selectedClients.size} clients?`
+    
+    if (!confirm(message)) return
+    
+    const updated = clients.filter(c => !selectedClients.has(c.id))
+    saveClients(updated)
+    setSelectedClients(new Set())
+  }
+
+  function deleteTestClients() {
+    const testClients = clients.filter(c => 
+      c.full_name.match(/^(Client \d+|Test Client|Sample Client)$/i)
+    )
+    
+    if (testClients.length === 0) {
+      alert('No test clients found to delete')
+      return
+    }
+    
+    if (!confirm(`Delete ${testClients.length} test clients (Client 1, Client 2, etc.)?`)) return
+    
+    const updated = clients.filter(c => 
+      !c.full_name.match(/^(Client \d+|Test Client|Sample Client)$/i)
+    )
     saveClients(updated)
   }
 
@@ -365,6 +417,31 @@ export default function ClientsPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-2">
+              {selectedClients.size > 0 && (
+                <>
+                  <button
+                    onClick={clearSelection}
+                    className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+                  >
+                    Clear ({selectedClients.size})
+                  </button>
+                  <button
+                    onClick={deleteSelected}
+                    className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    <Trash2 className="h-4 w-4 inline mr-1" />
+                    Delete
+                  </button>
+                </>
+              )}
+              <button
+                onClick={deleteTestClients}
+                className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
+                title="Delete all clients named 'Client 1', 'Client 2', etc."
+              >
+                <Trash2 className="h-4 w-4 inline mr-1" />
+                Clear Test
+              </button>
               <button
                 onClick={downloadTemplate}
                 className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
@@ -495,10 +572,18 @@ export default function ClientsPage() {
 
         {/* Clients List */}
         <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b">
+          <div className="px-6 py-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">
               Clients ({filteredClients.length})
             </h2>
+            {filteredClients.length > 0 && (
+              <button
+                onClick={selectAllVisible}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Select All
+              </button>
+            )}
           </div>
           
           {filteredClients.length > 0 ? (
@@ -507,6 +592,12 @@ export default function ClientsPage() {
                 <div key={client.id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedClients.has(client.id)}
+                        onChange={() => toggleSelectClient(client.id)}
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
                       <div className="bg-blue-100 rounded-full p-2">
                         <User className="h-5 w-5 text-blue-600" />
                       </div>
