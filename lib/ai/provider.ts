@@ -1,7 +1,7 @@
 import { Anthropic } from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 
-export type AIProvider = 'anthropic' | 'openai'
+export type AIProvider = 'anthropic' | 'openai' | 'fallback'
 
 export interface AIResponse {
   content: string
@@ -14,21 +14,34 @@ export interface AIResponse {
 export class AIClient {
   private anthropic?: Anthropic
   private openai?: OpenAI
-  private provider: AIProvider
+  private provider: AIProvider = 'fallback'
 
   constructor() {
     if (process.env.ANTHROPIC_API_KEY) {
-      this.anthropic = new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      })
-      this.provider = 'anthropic'
-    } else if (process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      })
-      this.provider = 'openai'
-    } else {
-      throw new Error('No AI provider API key found')
+      try {
+        this.anthropic = new Anthropic({
+          apiKey: process.env.ANTHROPIC_API_KEY,
+        })
+        this.provider = 'anthropic'
+      } catch (error) {
+        console.warn('Failed to initialize Anthropic:', error)
+      }
+    } 
+    
+    if (!this.anthropic && process.env.OPENAI_API_KEY) {
+      try {
+        this.openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
+        })
+        this.provider = 'openai'
+      } catch (error) {
+        console.warn('Failed to initialize OpenAI:', error)
+      }
+    }
+    
+    // Don't throw error, allow fallback mode
+    if (!this.anthropic && !this.openai) {
+      console.warn('No AI provider configured - using fallback mode')
     }
   }
 
@@ -81,7 +94,52 @@ export class AIClient {
       }
     }
 
-    throw new Error('No AI provider configured')
+    // Return a fallback workout when no AI is configured
+    if (options?.jsonMode) {
+      return {
+        content: JSON.stringify({
+          program_phase: "General Training",
+          blocks: [
+            {
+              title: "Warm-up",
+              exercises: [
+                { name: "Arm Circles", sets: 2, reps: "10 each direction", rest_seconds: 30 },
+                { name: "Leg Swings", sets: 2, reps: "10 each leg", rest_seconds: 30 },
+                { name: "Jumping Jacks", sets: 2, time_seconds: 60, rest_seconds: 30 }
+              ]
+            },
+            {
+              title: "Main Workout",
+              exercises: [
+                { name: "Push-ups", sets: 3, reps: "10-15", rest_seconds: 60 },
+                { name: "Bodyweight Squats", sets: 3, reps: "15-20", rest_seconds: 60 },
+                { name: "Plank", sets: 3, time_seconds: 30, rest_seconds: 45 },
+                { name: "Lunges", sets: 3, reps: "10 each leg", rest_seconds: 60 },
+                { name: "Mountain Climbers", sets: 3, time_seconds: 30, rest_seconds: 60 }
+              ]
+            },
+            {
+              title: "Cool-down",
+              exercises: [
+                { name: "Forward Fold", sets: 1, time_seconds: 60 },
+                { name: "Quad Stretch", sets: 2, time_seconds: 30, notes: ["Each leg"] },
+                { name: "Shoulder Stretch", sets: 2, time_seconds: 30, notes: ["Each arm"] }
+              ]
+            }
+          ],
+          training_goals: ["General fitness", "Strength", "Endurance"],
+          constraints: [],
+          intensity_target: "moderate",
+          notes: "This is a sample workout. Configure OPENAI_API_KEY or ANTHROPIC_API_KEY for AI-generated personalized workouts."
+        }),
+        usage: { input_tokens: 0, output_tokens: 0 }
+      }
+    }
+    
+    return {
+      content: 'Please configure an AI provider (OPENAI_API_KEY or ANTHROPIC_API_KEY) for workout generation.',
+      usage: { input_tokens: 0, output_tokens: 0 }
+    }
   }
 
   async generateEmbedding(text: string): Promise<number[]> {

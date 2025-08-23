@@ -84,7 +84,16 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
     // Parse and validate the generated workout
     let workoutPlan
     try {
-      const parsed = JSON.parse(response.content)
+      // Try to extract JSON from the response if it contains extra text
+      let jsonContent = response.content
+      
+      // Look for JSON structure in the response
+      const jsonMatch = jsonContent.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        jsonContent = jsonMatch[0]
+      }
+      
+      const parsed = JSON.parse(jsonContent)
       workoutPlan = {
         ...parsed,
         client_id: clientId || 'guest',
@@ -93,8 +102,9 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
       }
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError)
+      console.error('AI Response was:', response.content)
       
-      // Return a simple fallback workout
+      // Return a comprehensive fallback workout
       workoutPlan = {
         client_id: clientId || 'guest',
         title: title,
