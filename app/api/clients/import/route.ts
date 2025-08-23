@@ -18,19 +18,36 @@ export async function POST(request: NextRequest) {
       skip_empty_lines: true,
       trim: true,
       relax_column_count: true,
-      skip_records_with_error: true
+      skip_records_with_error: true,
+      bom: true // Handle files with BOM
     })
 
+    console.log('Parsed records:', records.length)
+    console.log('First record columns:', records[0] ? Object.keys(records[0]) : 'No records')
+    
     // Map CSV columns to client objects
     const clients = records.map((record: any, index: number) => {
+      // Get all column names (case-insensitive)
+      const columns = Object.keys(record)
+      const getValue = (possibleNames: string[]) => {
+        for (const name of possibleNames) {
+          // Check exact match first
+          if (record[name]) return record[name]
+          // Then check case-insensitive
+          const col = columns.find(c => c.toLowerCase() === name.toLowerCase())
+          if (col && record[col]) return record[col]
+        }
+        return ''
+      }
+
       // Try different column name variations
-      const name = record['Name'] || record['name'] || record['Full Name'] || record['full_name'] || `Client ${index + 1}`
-      const email = record['Email'] || record['email'] || record['Email Address'] || ''
-      const phone = record['Phone'] || record['phone'] || record['Phone Number'] || record['Mobile'] || ''
-      const goals = record['Goals'] || record['goals'] || record['Training Goals'] || record['Fitness Goals'] || ''
-      const injuries = record['Injuries'] || record['injuries'] || record['Limitations'] || record['Medical'] || ''
-      const equipment = record['Equipment'] || record['equipment'] || record['Available Equipment'] || ''
-      const notes = record['Notes'] || record['notes'] || record['Comments'] || ''
+      const name = getValue(['Name', 'name', 'Full Name', 'full_name', 'Client Name', 'client_name', 'Customer', 'Member']) || `Client ${index + 1}`
+      const email = getValue(['Email', 'email', 'Email Address', 'email_address', 'E-mail', 'Mail'])
+      const phone = getValue(['Phone', 'phone', 'Phone Number', 'phone_number', 'Mobile', 'mobile', 'Cell', 'Tel', 'Telephone'])
+      const goals = getValue(['Goals', 'goals', 'Training Goals', 'training_goals', 'Fitness Goals', 'fitness_goals', 'Objective', 'Target'])
+      const injuries = getValue(['Injuries', 'injuries', 'Limitations', 'limitations', 'Medical', 'medical', 'Health', 'Conditions'])
+      const equipment = getValue(['Equipment', 'equipment', 'Available Equipment', 'available_equipment', 'Gear', 'Tools'])
+      const notes = getValue(['Notes', 'notes', 'Comments', 'comments', 'Additional Info', 'Info', 'Description'])
 
       return {
         id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -51,10 +68,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Return debug info along with clients
     return NextResponse.json({
       success: true,
       clients,
-      message: `Successfully imported ${clients.length} clients`
+      message: `Successfully imported ${clients.length} clients`,
+      debug: {
+        totalRecords: records.length,
+        sampleColumns: records[0] ? Object.keys(records[0]) : [],
+        sampleRecord: records[0] || null
+      }
     })
 
   } catch (error) {

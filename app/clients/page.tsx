@@ -79,6 +79,17 @@ export default function ClientsPage() {
 
       const data = await response.json()
       
+      // Show debug info if available
+      if (data.debug) {
+        console.log('Import Debug Info:', data.debug)
+        if (data.debug.sampleColumns.length > 0) {
+          console.log('CSV Columns found:', data.debug.sampleColumns.join(', '))
+        }
+        if (data.debug.sampleRecord) {
+          console.log('Sample record:', data.debug.sampleRecord)
+        }
+      }
+      
       // Merge imported clients with existing ones
       const existingIds = new Set(clients.map(c => c.email || c.full_name))
       const newClients = data.clients.filter((c: Client) => 
@@ -88,9 +99,17 @@ export default function ClientsPage() {
       const updated = [...clients, ...newClients]
       saveClients(updated)
       
+      let statusMessage = `Successfully imported ${newClients.length} new clients`
+      if (data.clients.length - newClients.length > 0) {
+        statusMessage += ` (${data.clients.length - newClients.length} duplicates skipped)`
+      }
+      if (data.debug && data.debug.sampleColumns.length > 0) {
+        statusMessage += `. CSV columns detected: ${data.debug.sampleColumns.join(', ')}`
+      }
+      
       setImportStatus({ 
         type: 'success', 
-        message: `Successfully imported ${newClients.length} new clients (${data.clients.length - newClients.length} duplicates skipped)` 
+        message: statusMessage
       })
     } catch (error) {
       console.error('Import error:', error)
@@ -213,6 +232,10 @@ export default function ClientsPage() {
               </p>
               <p className="text-xs text-gray-500 mb-4">
                 CSV should have columns: Name, Email, Phone, Goals, Injuries, Equipment, Notes
+                <br />
+                <span className="text-gray-400">
+                  (We'll try to detect your column names automatically)
+                </span>
               </p>
               <div className="flex justify-center space-x-2">
                 <button
