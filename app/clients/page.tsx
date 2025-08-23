@@ -32,6 +32,7 @@ export default function ClientsPage() {
   const [importing, setImporting] = useState(false)
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const excelInputRef = useRef<HTMLInputElement>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
@@ -55,6 +56,61 @@ export default function ClientsPage() {
     
     const updated = clients.filter(c => c.id !== clientId)
     saveClients(updated)
+  }
+
+  async function handleExcelImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setImporting(true)
+    setImportStatus(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/clients/import-excel', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to import Excel file')
+      }
+
+      const data = await response.json()
+      
+      // Show debug info
+      if (data.debug) {
+        console.log('Excel Import Debug:', data.debug)
+      }
+      
+      // Merge imported clients
+      const existingIds = new Set(clients.map(c => c.full_name))
+      const newClients = data.clients.filter((c: Client) => 
+        !existingIds.has(c.full_name)
+      )
+      
+      const updated = [...clients, ...newClients]
+      saveClients(updated)
+      
+      setImportStatus({ 
+        type: 'success', 
+        message: `Imported ${newClients.length} clients from ${data.debug?.processedClients || 0} Excel sheets` 
+      })
+    } catch (error) {
+      console.error('Excel import error:', error)
+      setImportStatus({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Failed to import Excel file' 
+      })
+    } finally {
+      setImporting(false)
+      if (excelInputRef.current) {
+        excelInputRef.current.value = ''
+      }
+    }
   }
 
   async function handleCSVImport(event: React.ChangeEvent<HTMLInputElement>) {
@@ -216,8 +272,38 @@ export default function ClientsPage() {
         {/* Import Section */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Import Clients from CSV</h2>
+            <h2 className="text-lg font-semibold mb-4">Import Clients</h2>
             
+            {/* Excel Import */}
+            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 mb-4 bg-green-50">
+              <input
+                ref={excelInputRef}
+                type="file"
+                onChange={handleExcelImport}
+                accept=".xlsx,.xls"
+                className="hidden"
+              />
+              <FileSpreadsheet className="h-12 w-12 text-green-600 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-gray-700 mb-2">
+                Import from Excel (Your Format)
+              </p>
+              <p className="text-xs text-gray-600 mb-4">
+                Upload your Excel file with individual client sheets
+                <br />
+                <span className="text-gray-500">
+                  Each sheet tab = 1 client, with injuries in A1, goals in C1
+                </span>
+              </p>
+              <button
+                onClick={() => excelInputRef.current?.click()}
+                disabled={importing}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+              >
+                {importing ? 'Importing...' : 'Choose Excel File (.xlsx)'}
+              </button>
+            </div>
+
+            {/* CSV Import */}
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <input
                 ref={fileInputRef}
@@ -228,7 +314,7 @@ export default function ClientsPage() {
               />
               <Upload className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <p className="text-sm text-gray-600 mb-2">
-                Upload a CSV file to import multiple clients at once
+                Or upload a standard CSV file
               </p>
               <p className="text-xs text-gray-500 mb-4">
                 CSV should have columns: Name, Email, Phone, Goals, Injuries, Equipment, Notes
