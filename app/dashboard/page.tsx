@@ -66,6 +66,14 @@ export default function DashboardPage() {
           </Link>
           
           <Link
+            href="/builder/bulk"
+            className="flex items-center justify-center p-6 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Users className="h-5 w-5 mr-2" />
+            <span className="font-medium">Bulk Create</span>
+          </Link>
+          
+          <Link
             href="/clients"
             className="flex items-center justify-center p-6 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >

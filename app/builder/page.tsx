@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronDown, ChevronUp, Dumbbell, Search, X } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronUp, Dumbbell, Search, X, Users } from 'lucide-react'
 
 export default function BuilderPage() {
   const router = useRouter()
@@ -137,6 +137,15 @@ export default function BuilderPage() {
                 ← Back
               </a>
               <h1 className="text-xl font-semibold">Workout Builder</h1>
+            </div>
+            <div className="flex items-center">
+              <a 
+                href="/builder/bulk"
+                className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+              >
+                <Users className="inline h-4 w-4 mr-2" />
+                Bulk Create
+              </a>
             </div>
           </div>
         </div>
