@@ -69,18 +69,27 @@ export default function ContextPage() {
   }, [])
 
   function loadProjects() {
-    const saved = localStorage.getItem('ai-workout-contexts')
-    if (saved) {
-      const contexts = JSON.parse(saved).map((ctx: any) => ({
-        ...ctx,
-        documents: ctx.documents || [],
-        textSections: ctx.textSections || []
-      }))
-      setProjects(contexts)
-      if (contexts.length > 0 && !activeProject) {
-        setActiveProject(contexts[0])
-        setTextContext(contexts[0].textContext || '')
+    try {
+      const saved = localStorage.getItem('ai-workout-contexts')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const contexts = (Array.isArray(parsed) ? parsed : []).map((ctx: any) => ({
+          ...ctx,
+          documents: Array.isArray(ctx.documents) ? ctx.documents : [],
+          textSections: Array.isArray(ctx.textSections) ? ctx.textSections : []
+        }))
+        setProjects(contexts)
+        if (contexts.length > 0 && !activeProject) {
+          setActiveProject(contexts[0])
+          setTextContext(contexts[0].textContext || '')
+        }
       }
+    } catch (error) {
+      console.error('Error loading contexts from localStorage:', error)
+      // Reset to empty state if data is corrupted
+      setProjects([])
+      setActiveProject(null)
+      setTextContext('')
     }
   }
 

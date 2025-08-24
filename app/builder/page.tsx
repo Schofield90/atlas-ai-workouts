@@ -26,20 +26,39 @@ export default function BuilderPage() {
   }, [])
 
   function loadClients() {
-    const savedClients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
-    setClients(savedClients)
-    // Select first client by default if exists
-    if (savedClients.length > 0 && !selectedClient) {
-      setSelectedClient(savedClients[0].id)
+    try {
+      const saved = localStorage.getItem('ai-workout-clients')
+      const savedClients = saved ? JSON.parse(saved) : []
+      const validClients = Array.isArray(savedClients) ? savedClients : []
+      setClients(validClients)
+      // Select first client by default if exists
+      if (validClients.length > 0 && !selectedClient) {
+        setSelectedClient(validClients[0].id)
+      }
+    } catch (error) {
+      console.error('Error loading clients:', error)
+      setClients([])
     }
   }
 
   function loadContexts() {
-    const savedContexts = JSON.parse(localStorage.getItem('ai-workout-contexts') || '[]')
-    setContexts(savedContexts)
-    // Select first context by default if exists
-    if (savedContexts.length > 0 && !selectedContext) {
-      setSelectedContext(savedContexts[0])
+    try {
+      const saved = localStorage.getItem('ai-workout-contexts')
+      const savedContexts = saved ? JSON.parse(saved) : []
+      const validContexts = (Array.isArray(savedContexts) ? savedContexts : []).map((ctx: any) => ({
+        ...ctx,
+        documents: Array.isArray(ctx.documents) ? ctx.documents : [],
+        textSections: Array.isArray(ctx.textSections) ? ctx.textSections : []
+      }))
+      setContexts(validContexts)
+      // Select first context by default if exists
+      if (validContexts.length > 0 && !selectedContext) {
+        setSelectedContext(validContexts[0])
+      }
+    } catch (error) {
+      console.error('Error loading contexts:', error)
+      setContexts([])
+      setSelectedContext(null)
     }
   }
 
