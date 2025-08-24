@@ -68,7 +68,8 @@ export default function NewClientPage() {
       }
 
       // Save to localStorage
-      const existingClients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
+      const saved = localStorage.getItem('ai-workout-clients')
+      const existingClients = saved ? JSON.parse(saved) : []
       existingClients.push(client)
       localStorage.setItem('ai-workout-clients', JSON.stringify(existingClients))
 

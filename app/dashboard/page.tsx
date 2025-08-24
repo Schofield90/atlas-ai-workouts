@@ -10,16 +10,29 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ clients: 0, workouts: 0 })
 
   useEffect(() => {
-    // Load data from localStorage
-    const savedClients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
-    const savedWorkouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
-    
-    setClients(savedClients.slice(0, 5))
-    setWorkouts(savedWorkouts.slice(0, 5))
-    setStats({
-      clients: savedClients.length,
-      workouts: savedWorkouts.length
-    })
+    // Load data from localStorage with error handling
+    try {
+      const clientsData = localStorage.getItem('ai-workout-clients')
+      const workoutsData = localStorage.getItem('ai-workout-workouts')
+      
+      const savedClients = clientsData ? JSON.parse(clientsData) : []
+      const savedWorkouts = workoutsData ? JSON.parse(workoutsData) : []
+      
+      const validClients = Array.isArray(savedClients) ? savedClients : []
+      const validWorkouts = Array.isArray(savedWorkouts) ? savedWorkouts : []
+      
+      setClients(validClients.slice(0, 5))
+      setWorkouts(validWorkouts.slice(0, 5))
+      setStats({
+        clients: validClients.length,
+        workouts: validWorkouts.length
+      })
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+      setClients([])
+      setWorkouts([])
+      setStats({ clients: 0, workouts: 0 })
+    }
   }, [])
 
   return (

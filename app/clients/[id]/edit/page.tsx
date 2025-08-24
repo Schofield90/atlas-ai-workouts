@@ -30,13 +30,19 @@ export default function EditClientPage() {
   }, [clientId])
 
   function loadClient() {
-    const clients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
-    const foundClient = clients.find((c: Client) => c.id === clientId)
-    
-    if (foundClient) {
-      setClient(foundClient)
-    } else {
-      setError('Client not found')
+    try {
+      const saved = localStorage.getItem('ai-workout-clients')
+      const clients = saved ? JSON.parse(saved) : []
+      const foundClient = clients.find((c: Client) => c.id === clientId)
+      
+      if (foundClient) {
+        setClient(foundClient)
+      } else {
+        setError('Client not found')
+      }
+    } catch (error) {
+      console.error('Error loading client:', error)
+      setError('Failed to load client data')
     }
   }
 
@@ -46,7 +52,8 @@ export default function EditClientPage() {
     setSaving(true)
     
     try {
-      const clients = JSON.parse(localStorage.getItem('ai-workout-clients') || '[]')
+      const saved = localStorage.getItem('ai-workout-clients')
+      const clients = saved ? JSON.parse(saved) : []
       const updatedClients = clients.map((c: Client) => 
         c.id === clientId ? client : c
       )
