@@ -513,6 +513,7 @@ export default function BulkBuilderPage() {
                       </select>
                     </div>
                   </div>
+                  </div>
                 </div>
               ))}
             </div>
