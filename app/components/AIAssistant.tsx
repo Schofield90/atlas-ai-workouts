@@ -21,11 +21,27 @@ export default function AIAssistant() {
 
   useEffect(() => {
     // Load conversation history from localStorage
-    const savedMessages = localStorage.getItem('ai-assistant-messages')
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages))
-    } else {
-      // Add welcome message
+    try {
+      const savedMessages = localStorage.getItem('ai-assistant-messages')
+      if (savedMessages) {
+        const parsed = JSON.parse(savedMessages)
+        if (Array.isArray(parsed)) {
+          setMessages(parsed)
+        } else {
+          throw new Error('Invalid messages format')
+        }
+      } else {
+        // Add welcome message
+        setMessages([{
+          id: 'welcome',
+          role: 'assistant',
+          content: "Hi! I'm your AI fitness assistant. I can help you create workouts, manage clients, understand features, or answer any questions about training. How can I help you today?",
+          timestamp: new Date()
+        }])
+      }
+    } catch (error) {
+      console.error('Error loading AI assistant messages:', error)
+      // Reset to welcome message on error
       setMessages([{
         id: 'welcome',
         role: 'assistant',
@@ -156,7 +172,7 @@ export default function AIAssistant() {
           <>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message) => (
+              {Array.isArray(messages) && messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
