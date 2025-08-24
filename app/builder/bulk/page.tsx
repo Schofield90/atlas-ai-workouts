@@ -12,7 +12,8 @@ import {
   ChevronUp,
   Dumbbell,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react'
 
 interface Client {
@@ -39,6 +40,7 @@ export default function BulkBuilderPage() {
   const router = useRouter()
   
   const [clients, setClients] = useState<Client[]>([])
+  const [clientSearch, setClientSearch] = useState('')
   const [contexts, setContexts] = useState<any[]>([])
   const [workoutConfigs, setWorkoutConfigs] = useState<WorkoutConfig[]>([])
   const [defaultSettings, setDefaultSettings] = useState({
@@ -77,6 +79,20 @@ export default function BulkBuilderPage() {
       const savedContexts = saved ? JSON.parse(saved) : []
       const validContexts = Array.isArray(savedContexts) ? savedContexts : []
       setContexts(validContexts)
+      
+      // Set the most recent context as default (sort by updated_at or created_at)
+      if (validContexts.length > 0) {
+        const sortedContexts = [...validContexts].sort((a, b) => {
+          const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
+          const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
+          return dateB - dateA // Most recent first
+        })
+        
+        setDefaultSettings(prev => ({
+          ...prev,
+          contextId: sortedContexts[0].id
+        }))
+      }
     } catch (error) {
       console.error('Error loading contexts:', error)
       setContexts([])
@@ -90,7 +106,7 @@ export default function BulkBuilderPage() {
     const newConfig: WorkoutConfig = {
       clientId,
       client,
-      title: `${client.full_name.split(' ')[0]}'s Workout`,
+      title: '', // Empty by default, user will fill in
       duration: defaultSettings.duration,
       intensity: defaultSettings.intensity,
       focus: defaultSettings.focus || client.goals || '',
@@ -321,27 +337,59 @@ export default function BulkBuilderPage() {
             )}
           </div>
           
-          {availableClients.length > 0 ? (
+          {/* Search Bar */}
+          <div className="mb-4 relative">
+            <input
+              type="text"
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Search clients by name, email, or goals..."
+              className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            {clientSearch && (
+              <button
+                onClick={() => setClientSearch('')}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          
+          {availableClients.filter(client => 
+            client.full_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+            (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase())) ||
+            (client.goals && client.goals.toLowerCase().includes(clientSearch.toLowerCase()))
+          ).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {availableClients.map(client => (
-                <button
-                  key={client.id}
-                  onClick={() => addClient(client.id)}
-                  className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
-                >
-                  <div className="font-medium">{client.full_name}</div>
-                  {client.goals && (
-                    <div className="text-xs text-gray-500 truncate">{client.goals}</div>
-                  )}
-                  <Plus className="h-4 w-4 text-blue-600 mt-2" />
-                </button>
-              ))}
+              {availableClients
+                .filter(client => 
+                  client.full_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                  (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase())) ||
+                  (client.goals && client.goals.toLowerCase().includes(clientSearch.toLowerCase()))
+                )
+                .map(client => (
+                  <button
+                    key={client.id}
+                    onClick={() => addClient(client.id)}
+                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors"
+                  >
+                    <div className="font-medium">{client.full_name}</div>
+                    {client.goals && (
+                      <div className="text-xs text-gray-500 truncate">{client.goals}</div>
+                    )}
+                    <Plus className="h-4 w-4 text-blue-600 mt-2" />
+                  </button>
+                ))}
             </div>
           ) : (
             <p className="text-gray-500">
-              {clients.length === 0 
-                ? 'No clients available. Add clients first.'
-                : 'All clients have been selected.'}
+              {clientSearch 
+                ? `No clients found matching "${clientSearch}"`
+                : clients.length === 0 
+                  ? 'No clients available. Add clients first.'
+                  : 'All clients have been selected.'}
             </p>
           )}
         </div>
@@ -377,18 +425,23 @@ export default function BulkBuilderPage() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Workout Title - Full Width and Emphasized */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Workout Title
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Workout Title * (e.g., "Biceps and Chest" or "Shoulders and Quads")
                       </label>
                       <input
                         type="text"
                         value={config.title}
                         onChange={(e) => updateConfig(index, { title: e.target.value })}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        placeholder="Enter workout focus areas (e.g., Back and Biceps, Legs and Core)"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
                       />
                     </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
                         Duration (min)

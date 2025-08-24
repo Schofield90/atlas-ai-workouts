@@ -67,9 +67,15 @@ export default function BuilderPage() {
         textSections: Array.isArray(ctx.textSections) ? ctx.textSections : []
       }))
       setContexts(validContexts)
-      // Select first context by default if exists
+      
+      // Select the most recent context by default (sort by updated_at or created_at)
       if (validContexts.length > 0 && !selectedContext) {
-        setSelectedContext(validContexts[0])
+        const sortedContexts = [...validContexts].sort((a, b) => {
+          const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
+          const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
+          return dateB - dateA // Most recent first
+        })
+        setSelectedContext(sortedContexts[0])
       }
     } catch (error) {
       console.error('Error loading contexts:', error)
