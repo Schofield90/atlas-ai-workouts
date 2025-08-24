@@ -36,7 +36,7 @@ export function buildWorkoutPrompt(
   title: string,
   additionalInstructions?: string
 ): string {
-  const equipment = context.equipment.length > 0 
+  const equipment = context.equipment && Array.isArray(context.equipment) && context.equipment.length > 0 
     ? context.equipment.join(', ') 
     : 'bodyweight only'
   

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 Client: ${client.full_name}
 Title: ${title}
 Goals: ${client.goals || 'General fitness'}
-Available Equipment: ${equipment.length > 0 ? equipment.join(', ') : 'bodyweight only'}
+Available Equipment: ${Array.isArray(equipment) && equipment.length > 0 ? equipment.join(', ') : 'bodyweight only'}
 Injuries/Limitations: ${client.injuries || 'none'}
 Duration: ${duration} minutes
 Intensity: ${intensity}
