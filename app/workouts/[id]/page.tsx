@@ -14,20 +14,28 @@ export default function WorkoutPage({
   const [workout, setWorkout] = useState<any>(null)
 
   useEffect(() => {
-    // Load workout from localStorage
-    const workouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
-    const foundWorkout = workouts.find((w: any) => w.id === id || w.workoutId === id)
-    
-    if (foundWorkout) {
-      // Ensure workout has proper structure
-      const formattedWorkout = {
-        ...foundWorkout,
-        plan: foundWorkout.plan || foundWorkout,
-        clients: foundWorkout.client || { full_name: 'Guest User' }
+    try {
+      // Load workout from localStorage
+      const saved = localStorage.getItem('ai-workout-workouts')
+      const workouts = saved ? JSON.parse(saved) : []
+      const validWorkouts = Array.isArray(workouts) ? workouts : []
+      const foundWorkout = validWorkouts.find((w: any) => w.id === id || w.workoutId === id)
+      
+      if (foundWorkout) {
+        // Ensure workout has proper structure
+        const formattedWorkout = {
+          ...foundWorkout,
+          plan: foundWorkout.plan || foundWorkout,
+          clients: foundWorkout.client || foundWorkout.clients || { full_name: 'Guest User' }
+        }
+        setWorkout(formattedWorkout)
+      } else {
+        // Redirect if workout not found
+        console.error('Workout not found:', id)
+        router.push('/dashboard')
       }
-      setWorkout(formattedWorkout)
-    } else {
-      // Redirect if workout not found
+    } catch (error) {
+      console.error('Error loading workout:', error)
       router.push('/dashboard')
     }
   }, [id, router])

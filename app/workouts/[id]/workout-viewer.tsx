@@ -40,8 +40,34 @@ interface WorkoutViewerProps {
 
 export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
   const router = useRouter()
+  
+  // Ensure workout has required structure
+  if (!workout || !workout.plan) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Invalid workout data</p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+  
   const [isEditing, setIsEditing] = useState(false)
-  const [editedPlan, setEditedPlan] = useState<WorkoutPlan>(workout.plan)
+  const [editedPlan, setEditedPlan] = useState<WorkoutPlan>(workout.plan || {
+    blocks: [],
+    training_goals: [],
+    constraints: [],
+    total_time_minutes: 0,
+    intensity_target: 'Moderate',
+    client_id: '',
+    program_phase: 'General Training'
+  })
   const [expandedBlocks, setExpandedBlocks] = useState<Set<number>>(new Set([0]))
   const [saving, setSaving] = useState(false)
 
@@ -202,12 +228,12 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                   <Target className="h-5 w-5 text-gray-400 mr-2" />
                   <div>
                     <div className="text-sm text-gray-500">Blocks</div>
-                    <div className="font-medium">{editedPlan.blocks.length}</div>
+                    <div className="font-medium">{editedPlan.blocks?.length || 0}</div>
                   </div>
                 </div>
               </div>
               
-              {editedPlan.training_goals.length > 0 && (
+              {editedPlan.training_goals && editedPlan.training_goals.length > 0 && (
                 <div className="mt-4">
                   <div className="text-sm text-gray-500 mb-1">Training Goals</div>
                   <div className="flex flex-wrap gap-2">
@@ -220,7 +246,7 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                 </div>
               )}
 
-              {editedPlan.constraints.length > 0 && (
+              {editedPlan.constraints && editedPlan.constraints.length > 0 && (
                 <div className="mt-4">
                   <div className="flex items-center text-sm text-gray-500 mb-1">
                     <AlertCircle className="h-4 w-4 mr-1" />
@@ -238,7 +264,7 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
             </div>
 
             {/* Workout Blocks */}
-            {editedPlan.blocks.map((block, blockIndex) => (
+            {editedPlan.blocks && Array.isArray(editedPlan.blocks) && editedPlan.blocks.map((block, blockIndex) => (
               <div key={blockIndex} className="bg-white rounded-lg shadow">
                 <button
                   onClick={() => toggleBlock(blockIndex)}
@@ -247,7 +273,7 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                   <h3 className="text-lg font-semibold">{block.title}</h3>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">
-                      {block.exercises.length} exercises
+                      {block.exercises?.length || 0} exercises
                     </span>
                     {expandedBlocks.has(blockIndex) ? (
                       <ChevronUp className="h-5 w-5 text-gray-400" />
@@ -260,7 +286,7 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                 {expandedBlocks.has(blockIndex) && (
                   <div className="px-6 pb-6">
                     <div className="space-y-4">
-                      {block.exercises.map((exercise, exIndex) => (
+                      {block.exercises && Array.isArray(block.exercises) && block.exercises.map((exercise, exIndex) => (
                         <div key={exIndex} className="border-l-4 border-blue-500 pl-4 py-2">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
