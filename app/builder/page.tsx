@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronUp, Dumbbell, Search, X } from 'lucide-react'
 
 export default function BuilderPage() {
   const router = useRouter()
@@ -10,6 +10,8 @@ export default function BuilderPage() {
   const [title, setTitle] = useState('')
   const [selectedClient, setSelectedClient] = useState<string>('')
   const [clients, setClients] = useState<any[]>([])
+  const [clientSearch, setClientSearch] = useState('')
+  const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [duration, setDuration] = useState(60)
   const [intensity, setIntensity] = useState('moderate')
@@ -19,10 +21,24 @@ export default function BuilderPage() {
   const [error, setError] = useState('')
   const [selectedContext, setSelectedContext] = useState<any>(null)
   const [contexts, setContexts] = useState<any[]>([])
+  
+  const clientDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadClients()
     loadContexts()
+  }, [])
+
+  useEffect(() => {
+    // Close dropdown when clicking outside
+    function handleClickOutside(event: MouseEvent) {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setShowClientDropdown(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   function loadClients() {
@@ -157,25 +173,97 @@ export default function BuilderPage() {
               />
             </div>
 
-            {/* Client Selection */}
-            <div>
+            {/* Client Selection - Searchable Dropdown */}
+            <div className="relative" ref={clientDropdownRef}>
               <label htmlFor="client" className="block text-sm font-medium text-gray-700 mb-1">
                 Select Client *
               </label>
-              <select
-                id="client"
-                value={selectedClient}
-                onChange={(e) => setSelectedClient(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={generating}
-              >
-                <option value="">Guest User (No client selected)</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.full_name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  id="client"
+                  type="text"
+                  value={clientSearch}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value)
+                    setShowClientDropdown(true)
+                  }}
+                  onFocus={() => setShowClientDropdown(true)}
+                  placeholder={
+                    selectedClient 
+                      ? clients.find(c => c.id === selectedClient)?.full_name 
+                      : "Type to search clients..."
+                  }
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={generating}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </div>
+                {selectedClient && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClient('')
+                      setClientSearch('')
+                    }}
+                    className="absolute inset-y-0 right-8 flex items-center pr-2"
+                  >
+                    <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Dropdown List */}
+              {showClientDropdown && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClient('')
+                      setClientSearch('')
+                      setShowClientDropdown(false)
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b"
+                  >
+                    <span className="text-gray-600">Guest User (No client selected)</span>
+                  </button>
+                  {clients
+                    .filter(client => 
+                      client.full_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                      (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase()))
+                    )
+                    .map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedClient(client.id)
+                          setClientSearch('')
+                          setShowClientDropdown(false)
+                        }}
+                        className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${
+                          selectedClient === client.id ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="font-medium">{client.full_name}</div>
+                        {client.email && (
+                          <div className="text-xs text-gray-500">{client.email}</div>
+                        )}
+                        {client.goals && (
+                          <div className="text-xs text-gray-400 truncate">{client.goals}</div>
+                        )}
+                      </button>
+                    ))}
+                  {clients.filter(client => 
+                    client.full_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                    (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase()))
+                  ).length === 0 && (
+                    <div className="px-3 py-2 text-gray-500 text-sm">
+                      No clients found matching "{clientSearch}"
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Context Selection */}
