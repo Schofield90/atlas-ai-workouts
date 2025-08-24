@@ -85,7 +85,12 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
     let workoutPlan
     try {
       // Try to extract JSON from the response if it contains extra text
-      let jsonContent = response.content
+      let jsonContent = response.content || '{}'
+      
+      console.log('Raw AI response:', jsonContent)
+      
+      // Remove any markdown code blocks if present
+      jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '')
       
       // Look for JSON structure in the response
       const jsonMatch = jsonContent.match(/\{[\s\S]*\}/)
@@ -94,11 +99,19 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
       }
       
       const parsed = JSON.parse(jsonContent)
+      console.log('Parsed workout plan:', parsed)
+      
       workoutPlan = {
         ...parsed,
         client_id: clientId || 'guest',
         title: title,
         total_time_minutes: duration,
+      }
+      
+      // Ensure blocks array exists
+      if (!workoutPlan.blocks || !Array.isArray(workoutPlan.blocks)) {
+        console.warn('No blocks in AI response, using fallback')
+        throw new Error('Invalid workout structure from AI')
       }
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError)
@@ -144,10 +157,14 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
       }
     }
 
-    // Create workout with unique ID
+    // Create workout with unique ID and proper structure
     const workout = {
       id: `workout-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      ...workoutPlan,
+      title: title,
+      plan: workoutPlan,
+      clients: client,
+      source: 'ai',
+      version: 1,
       created_at: new Date().toISOString()
     }
 
