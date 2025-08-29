@@ -42,8 +42,10 @@ export default function ClientsPage() {
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const excelInputRef = useRef<HTMLInputElement>(null)
+  const analyzeInputRef = useRef<HTMLInputElement>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
+  const [analysisResult, setAnalysisResult] = useState<any>(null)
 
   useEffect(() => {
     loadClients()
@@ -485,6 +487,65 @@ export default function ClientsPage() {
       message: `Successfully imported ${result.imported} of ${result.total} clients` 
     })
   }
+  
+  async function analyzeExcel(file: File) {
+    setImporting(true)
+    setImportStatus(null)
+    setAnalysisResult(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch('/api/clients/analyze-excel', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to analyze file')
+      }
+      
+      console.log('Excel Analysis Result:', result)
+      setAnalysisResult(result)
+      
+      // Display analysis in import status
+      if (result.analysis && result.analysis.sheets.length > 0) {
+        const sheet = result.analysis.sheets[0]
+        const message = `
+File: ${result.analysis.fileName}
+Sheet: ${sheet.name}
+Rows: ${sheet.rowCount}
+Columns: ${sheet.columnCount}
+
+Headers found:
+${sheet.headers.map((h: any) => `- Column ${h.column}: ${h.value || '(empty)'}`).join('\n')}
+
+Recommendations:
+${result.recommendations.join('\n')}
+
+Check browser console for full analysis.`
+        
+        setImportStatus({ 
+          type: 'success', 
+          message: message
+        })
+      } else {
+        setImportStatus({ 
+          type: 'error', 
+          message: 'No data found in Excel file' 
+        })
+      }
+    } catch (error: any) {
+      console.error('Analysis error:', error)
+      setImportStatus({ type: 'error', message: error.message || 'Failed to analyze Excel file' })
+    } finally {
+      setImporting(false)
+      if (analyzeInputRef.current) analyzeInputRef.current.value = ''
+    }
+  }
 
   function exportCSV() {
     const csv = [
@@ -541,17 +602,17 @@ export default function ClientsPage() {
       </div>
 
       {importStatus && (
-        <div className={`mb-4 p-4 rounded-lg flex items-center gap-2 ${
+        <div className={`mb-4 p-4 rounded-lg flex items-start gap-2 ${
           importStatus.type === 'success' 
             ? 'bg-green-50 text-green-800' 
             : 'bg-red-50 text-red-800'
         }`}>
           {importStatus.type === 'success' ? (
-            <CheckCircle className="w-5 h-5" />
+            <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           ) : (
-            <AlertCircle className="w-5 h-5" />
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           )}
-          {importStatus.message}
+          <pre className="whitespace-pre-wrap font-mono text-xs">{importStatus.message}</pre>
         </div>
       )}
 
@@ -589,6 +650,14 @@ export default function ClientsPage() {
               Import Excel
             </button>
             <button
+              onClick={() => analyzeInputRef.current?.click()}
+              disabled={importing}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              <AlertCircle className="w-5 h-5" />
+              Analyze Excel
+            </button>
+            <button
               onClick={exportCSV}
               disabled={clients.length === 0}
               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
@@ -618,6 +687,17 @@ export default function ClientsPage() {
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file) importExcel(file)
+          }}
+        />
+
+        <input
+          ref={analyzeInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) analyzeExcel(file)
           }}
         />
 
