@@ -243,40 +243,79 @@ export default function ClientsPage() {
     setImportStatus(null)
 
     try {
-      // Check file size client-side
-      if (file.size > 10 * 1024 * 1024) { // 10MB
-        throw new Error('File too large. Maximum size is 10MB')
+      console.log('Processing Excel file:', file.name, 'Size:', file.size)
+      
+      // Process Excel file client-side to extract data
+      const xlsxModule = await import('xlsx')
+      const XLSX = xlsxModule.default || xlsxModule
+      
+      if (!XLSX || !XLSX.read) {
+        // Fallback to server processing for smaller files
+        if (file.size < 1024 * 1024) { // Less than 1MB
+          return importExcelViaServer(file)
+        }
+        throw new Error('Excel library not available. Please refresh the page.')
       }
       
-      console.log('Uploading Excel file:', file.name, 'Size:', file.size)
+      const arrayBuffer = await file.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const data = XLSX.utils.sheet_to_json(worksheet)
       
-      // Use server-side API for Excel processing
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const response = await fetch('/api/clients/import-simple', {
-        method: 'POST',
-        body: formData
-      })
-      
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Non-JSON response:', text)
-        throw new Error('Server error: ' + text.substring(0, 100))
+      if (!data || data.length === 0) {
+        throw new Error('No data found in Excel file')
       }
       
-      const result = await response.json()
+      console.log(`Found ${data.length} rows in Excel file`)
       
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to import file')
+      // Prepare clients data
+      const clients = data.map((row: any) => ({
+        name: row['Name'] || row['Full Name'] || row['Client Name'] || '',
+        email: row['Email'] || row['Email Address'] || null,
+        phone: row['Phone'] || row['Phone Number'] || null,
+        goals: row['Goals'] || row['Fitness Goals'] || null,
+        injuries: row['Injuries'] || row['Medical History'] || null,
+        equipment: row['Equipment'] 
+          ? String(row['Equipment']).split(/[,;]/).map(e => e.trim()).filter(Boolean)
+          : [],
+        notes: row['Notes'] || row['Comments'] || null
+      })).filter(c => c.name && c.name.trim())
+      
+      console.log(`Prepared ${clients.length} valid clients for import`)
+      
+      // Send in chunks to avoid payload size limits
+      const chunkSize = 30 // Send 30 clients at a time
+      let totalImported = 0
+      
+      for (let i = 0; i < clients.length; i += chunkSize) {
+        const chunk = clients.slice(i, i + chunkSize)
+        setImportStatus({ 
+          type: 'success', 
+          message: `Processing batch ${Math.floor(i/chunkSize) + 1} of ${Math.ceil(clients.length/chunkSize)}...` 
+        })
+        
+        const response = await fetch('/api/clients/import-chunked', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ clients: chunk })
+        })
+        
+        const result = await response.json()
+        
+        if (!response.ok) {
+          console.error('Batch error:', result)
+        } else {
+          totalImported += result.imported
+        }
       }
       
       await loadClients()
       setImportStatus({ 
         type: 'success', 
-        message: `Successfully imported ${result.imported} of ${result.total} clients to cloud storage` 
+        message: `Successfully imported ${totalImported} of ${clients.length} clients to cloud storage` 
       })
     } catch (error: any) {
       console.error('Import error:', error)
@@ -285,6 +324,29 @@ export default function ClientsPage() {
       setImporting(false)
       if (excelInputRef.current) excelInputRef.current.value = ''
     }
+  }
+  
+  async function importExcelViaServer(file: File) {
+    // Fallback for small files
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    const response = await fetch('/api/clients/import-simple', {
+      method: 'POST',
+      body: formData
+    })
+    
+    const result = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to import file')
+    }
+    
+    await loadClients()
+    setImportStatus({ 
+      type: 'success', 
+      message: `Successfully imported ${result.imported} of ${result.total} clients` 
+    })
   }
 
   function exportCSV() {
