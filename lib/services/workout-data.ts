@@ -174,10 +174,14 @@ export const clientService = {
 
       if (error) {
         console.error('Error creating client:', error)
+        throw error
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in createClient:', error)
       throw error
     }
-
-    return data
   },
 
   async updateClient(id: string, updates: Partial<WorkoutClient>) {
