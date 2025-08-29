@@ -352,7 +352,7 @@ export default function ClientsPage() {
       
       // Log first row to see column names
       if (data.length > 0) {
-        console.log('First row keys:', Object.keys(data[0]))
+        console.log('First row keys:', Object.keys(data[0] as any))
         console.log('First row data:', data[0])
       }
       
