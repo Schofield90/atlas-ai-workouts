@@ -20,7 +20,8 @@ export default function DashboardPage() {
     try {
       // Load clients from Supabase
       const cloudClients = await clientService.getClients()
-      const cloudWorkouts = await clientService.getWorkouts()
+      // For now, workouts are empty until we implement workout service
+      const cloudWorkouts: any[] = []
       
       setClients(cloudClients.slice(0, 5))
       setWorkouts(cloudWorkouts.slice(0, 5))
