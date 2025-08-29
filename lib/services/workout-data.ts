@@ -357,14 +357,14 @@ export const clientService = {
         
         // Get all clients to map by name
         const clients = await this.getClients()
-        const clientMap = new Map(clients.map(c => [c.full_name, c.id]))
+        const clientMap = new Map(clients.map((c: any) => [c.full_name, c.id]))
 
         for (const workout of workouts) {
           try {
             const clientId = workout.clientName ? clientMap.get(workout.clientName) : undefined
             
             await this.createWorkout({
-              client_id: clientId,
+              client_id: clientId as string | undefined,
               title: workout.title || 'Imported Workout',
               description: workout.description,
               workout_type: workout.type,

@@ -12,7 +12,7 @@ export default function LoginPage() {
   const supabase = createClient()
 
   // Check auth state
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.onAuthStateChange((event: any, session: any) => {
     if (event === 'SIGNED_IN' && session) {
       router.push('/dashboard')
     }
