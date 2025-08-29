@@ -955,10 +955,9 @@ Check browser console for full analysis.`
           <input
             type="text"
             placeholder="Search clients..."
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 rounded-lg"
+            className="flex-1 bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 px-4 py-2 rounded-lg"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
           <div className="flex gap-2">
             <Link
