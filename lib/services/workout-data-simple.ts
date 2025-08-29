@@ -6,11 +6,19 @@ export const simpleClientService = {
     try {
       const supabase = createClient()
       
+      // Check if we have a mock client (no config)
+      if (!supabase.from) {
+        console.warn('Supabase not configured, returning empty array')
+        return []
+      }
+      
       // Just get all clients from workout_clients table
-      const { data, error } = await supabase
+      const result = await supabase
         .from('workout_clients')
         .select('*')
         .order('created_at', { ascending: false })
+
+      const { data, error } = result || { data: [], error: null }
 
       if (error) {
         console.error('Error fetching clients:', error)
