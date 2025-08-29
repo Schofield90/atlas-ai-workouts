@@ -3,8 +3,25 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, User } from 'lucide-react'
-import { clientService } from '@/lib/services/workout-data'
-import type { WorkoutClient } from '@/lib/services/workout-data'
+import { simpleClientService as clientService } from '@/lib/services/workout-data-simple'
+
+interface WorkoutClient {
+  id: string
+  full_name: string
+  email?: string
+  phone?: string
+  age?: number
+  sex?: string
+  height_cm?: number
+  weight_kg?: number
+  goals?: string
+  injuries?: string
+  equipment?: any[]
+  preferences?: any
+  notes?: string
+  created_at: string
+  updated_at: string
+}
 
 export default function EditClientPage() {
   const params = useParams()

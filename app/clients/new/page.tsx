@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Target, AlertCircle, Dumbbell, Save } from 'lucide-react'
-import { clientService } from '@/lib/services/workout-data'
+import { simpleClientService as clientService } from '@/lib/services/workout-data-simple'
 
 const EQUIPMENT_OPTIONS = [
   'Barbell', 'Dumbbells', 'Kettlebells', 'Pull-up Bar', 'Resistance Bands',
