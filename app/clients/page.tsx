@@ -49,9 +49,13 @@ export default function ClientsPage() {
       const cloudClients = await clientService.getClients()
       setClients(cloudClients)
       console.log(`✅ Loaded ${cloudClients.length} clients from Supabase`)
+      if (cloudClients.length === 0) {
+        console.log('No clients found in database. Ready to add new clients.')
+      }
     } catch (error) {
       console.error('Error loading clients:', error)
-      setImportStatus({ type: 'error', message: 'Failed to load clients from cloud' })
+      setImportStatus({ type: 'error', message: `Error: ${error instanceof Error ? error.message : 'Failed to load clients'}` })
+      setClients([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
