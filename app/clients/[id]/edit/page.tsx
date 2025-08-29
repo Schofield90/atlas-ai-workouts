@@ -207,8 +207,11 @@ export default function EditClientPage() {
               </label>
               <textarea
                 id="equipment"
-                value={client.equipment || ''}
-                onChange={(e) => setClient({ ...client, equipment: e.target.value })}
+                value={Array.isArray(client.equipment) ? client.equipment.join(', ') : ''}
+                onChange={(e) => setClient({ 
+                  ...client, 
+                  equipment: e.target.value.split(',').map(item => item.trim()).filter(Boolean)
+                })}
                 rows={2}
                 placeholder="e.g., Dumbbells, barbell, pull-up bar, resistance bands"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
