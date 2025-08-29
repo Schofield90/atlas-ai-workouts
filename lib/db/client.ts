@@ -1,16 +1,13 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
+import { supabaseConfig } from '@/lib/config/supabase'
 
 export function createClient() {
-  // Try both variable names that might be set in Vercel
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+  const supabaseUrl = supabaseConfig.url
+  const supabaseAnonKey = supabaseConfig.anonKey
   
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Missing Supabase environment variables:', {
-      url: !!supabaseUrl,
-      key: !!supabaseAnonKey
-    })
+    console.error('Missing Supabase configuration')
     // Return a mock client to prevent app crash
     return {
       from: () => ({
