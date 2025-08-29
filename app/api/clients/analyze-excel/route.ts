@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     const report = {
       success: true,
       analysis,
-      recommendations: []
+      recommendations: [] as string[]
     }
     
     // Add recommendations based on analysis
