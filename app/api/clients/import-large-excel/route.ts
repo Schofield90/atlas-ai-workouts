@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
           injuries: client.injuries || null,
           equipment: Array.isArray(client.equipment) ? client.equipment : [],
           notes: client.notes || null,
-          user_id: 'default-user'
+          // Remove user_id - let it be NULL in database
         }))
         
         // Validate required fields

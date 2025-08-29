@@ -20,6 +20,11 @@
 # production
 /build
 
+# IMPORTANT: Never commit these files
+/lib/db/client-fixed.ts
+.env.local
+.env.production
+
 # misc
 .DS_Store
 *.pem

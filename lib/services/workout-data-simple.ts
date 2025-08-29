@@ -42,7 +42,7 @@ export const simpleClientService = {
         .from('workout_clients')
         .insert({
           ...client,
-          user_id: 'default-user' // Use a default user ID
+          // Remove user_id - let it be NULL in database
         })
         .select()
         .single()

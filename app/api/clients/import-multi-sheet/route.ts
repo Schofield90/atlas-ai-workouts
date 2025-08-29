@@ -196,8 +196,8 @@ export async function POST(request: NextRequest) {
           goals: goals || 'No goals specified',
           injuries: injuries || 'No injuries reported',
           equipment: [],
-          notes: `Imported from sheet: ${sheetName}`,
-          user_id: 'default-user'
+          notes: `Imported from sheet: ${sheetName}`
+          // Remove user_id - let it be NULL in database
         }
         
         console.log(`Processing client: ${clientName}`)
@@ -277,8 +277,8 @@ async function processChunkedRequest(request: NextRequest, chunkIndex: number, t
           goals: client.goals || 'No goals specified',
           injuries: client.injuries || 'No injuries reported',
           equipment: Array.isArray(client.equipment) ? client.equipment : [],
-          notes: client.notes || `Imported from sheet: ${client.sheetName || 'Unknown'}`,
-          user_id: 'default-user'
+          notes: client.notes || `Imported from sheet: ${client.sheetName || 'Unknown'}`
+          // Remove user_id - let it be NULL in database
         }
         
         console.log(`Inserting client ${i + 1}/${clients.length}: ${preparedClient.full_name}`)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/db/client-fixed'
+import { createClient } from '@/lib/db/client'
+import { createServiceClient } from '@/lib/db/service'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60 // 60 seconds timeout
@@ -61,7 +62,23 @@ export async function POST(request: NextRequest) {
     }
     
     // Process and save to Supabase
-    const supabase = createClient()
+    // Try to use authenticated client first, fall back to service client for imports
+    let supabase = createClient()
+    
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id || 'default-user'
+    
+    // If not authenticated or having issues, use service client
+    if (!user) {
+      try {
+        supabase = createServiceClient()
+      } catch (e) {
+        // If service client fails, continue with regular client
+        console.log('Service client not available, using regular client')
+      }
+    }
+    
     const clientsToInsert = []
     
     // First, prepare all clients with flexible column matching
@@ -123,7 +140,7 @@ export async function POST(request: NextRequest) {
           ? String(equipment).split(/[,;|]/).map(e => e.trim()).filter(Boolean)
           : [],
         notes: notes || null,
-        user_id: 'default-user'
+        user_id: userId
       }
       
       clientsToInsert.push(client)

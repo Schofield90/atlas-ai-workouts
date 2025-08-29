@@ -1,11 +1,15 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-// Hardcode the credentials directly - no environment variables
-const SUPABASE_URL = 'https://lzlrojoaxrqvmhempnkn.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6bHJvam9heHJxdm1oZW1wbmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0OTI1MzksImV4cCI6MjA2ODA2ODUzOX0.8rGsdaYcnwFIyWEhKKqz-W-KsOAP6WRTuEv8UrzkKuc'
+// Use environment variables with fallback for development
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lzlrojoaxrqvmhempnkn.supabase.co'
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 export function createClient() {
   try {
+    if (!SUPABASE_ANON_KEY) {
+      console.warn('Supabase anon key not configured, using limited mock client')
+      throw new Error('Missing Supabase configuration')
+    }
     return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   } catch (error) {
     console.error('Failed to create Supabase client:', error)

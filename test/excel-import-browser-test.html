@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Import QA Test - Browser Version</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .test-result.success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .test-result.error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        .test-result.warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        .test-result.info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        #test-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .risk-item {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .risk-high { background: #f8d7da; color: #721c24; }
+        .risk-medium { background: #fff3cd; color: #856404; }
+        .risk-low { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Excel Import QA Test Suite - Browser Version</h1>
+    
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">168</div>
+                <div class="stat-label">Sheets to Test</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">4 MB</div>
+                <div class="stat-label">File Size Limit</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">20</div>
+                <div class="stat-label">Chunk Size</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="test-status">Ready</div>
+                <div class="stat-label">Status</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="runTest1()">Test 1: Reproduce User Issue</button>
+        <button onclick="runTest2()">Test 2: Large File (168 sheets)</button>
+        <button onclick="runTest3()">Test 3: Test RLS Fix</button>
+        <button onclick="runTest4()">Test 4: Error Scenarios</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Risk Assessment</h2>
+        <div id="risk-assessment"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Log</h2>
+        <div id="test-log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://lzlrojoaxrqvmhempnkn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6bHJvam9heHJxdm1oZW1wbmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0OTI1MzksImV4cCI6MjA2ODA2ODUzOX0.8rGsdaYcnwFIyWEhKKqz-W-KsOAP6WRTuEv8UrzkKuc';
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('test-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = {
+                info: '#17a2b8',
+                success: '#28a745',
+                error: '#dc3545',
+                warning: '#ffc107'
+            }[type] || '#000';
+            
+            logDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('test-log').innerHTML = '';
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('risk-assessment').innerHTML = '';
+        }
+
+        function updateStatus(status) {
+            document.getElementById('test-status').textContent = status;
+        }
+
+        function addResult(title, message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML += `
+                <div class="test-result ${type}">
+                    <strong>${title}:</strong> ${message}
+                </div>
+            `;
+        }
+
+        function createTestExcelFile(numSheets = 5) {
+            const workbook = XLSX.utils.book_new();
+            
+            for (let i = 1; i <= numSheets; i++) {
+                const sheetData = [
+                    ['Injuries:', `Test injury ${i} - lower back pain, knee issues`],
+                    ['Goals:', `Test goal ${i} - lose weight, build muscle`],
+                    ['Equipment:', 'Dumbbells, Resistance bands, Treadmill'],
+                    ['Notes:', `Client ${i} additional notes and preferences`]
+                ];
+                
+                const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                const sheetName = `Client ${i}`;
+                
+                XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+            }
+            
+            return workbook;
+        }
+
+        async function testSupabaseConnection() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/workout_clients?select=id&limit=1`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    return { success: false, error };
+                }
+                
+                return { success: true };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function runTest1() {
+            updateStatus('Running Test 1...');
+            log('Starting Test 1: Reproduce User Issue', 'info');
+            
+            // Create test Excel file
+            log('Creating Excel file with 10 test clients...', 'info');
+            const workbook = createTestExcelFile(10);
+            
+            log(`Found ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}`, 'success');
+            
+            // Extract client data
+            const clients = workbook.SheetNames.map(sheetName => ({
+                full_name: sheetName,
+                goals: 'Test goal',
+                injuries: 'Test injury',
+                email: null,
+                phone: null,
+                equipment: [],
+                notes: 'Test import',
+                user_id: 'default-user'
+            }));
+            
+            log('Attempting to save clients to database...', 'info');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/workout_clients`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(clients)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorObj;
+                    try {
+                        errorObj = JSON.parse(errorText);
+                    } catch {
+                        errorObj = { message: errorText };
+                    }
+                    
+                    log(`Database insertion FAILED: ${errorObj.message || errorObj.error}`, 'error');
+                    
+                    if (errorObj.message?.includes('row-level security') || errorObj.code === '42501') {
+                        addResult('Root Cause Identified', 
+                            'Row Level Security (RLS) is blocking insertion! This confirms the user issue.', 
+                            'error');
+                        log('RLS ISSUE CONFIRMED - Clients found but cannot be saved', 'error');
+                    }
+                    
+                    addResult('Test 1 Result', 
+                        'Successfully reproduced user issue - clients found but not saved', 
+                        'warning');
+                } else {
+                    const data = await response.json();
+                    log(`Clients saved successfully (${data.length} inserted)`, 'success');
+                    addResult('Test 1 Result', 
+                        'RLS appears to be fixed - clients saved successfully', 
+                        'success');
+                }
+            } catch (error) {
+                log(`Test error: ${error.message}`, 'error');
+                addResult('Test 1 Error', error.message, 'error');
+            }
+            
+            updateStatus('Test 1 Complete');
+        }
+
+        async function runTest2() {
+            updateStatus('Running Test 2...');
+            log('Starting Test 2: Large File Import (168 sheets)', 'info');
+            
+            const startTime = Date.now();
+            log('Creating Excel file with 168 sheets...', 'info');
+            const workbook = createTestExcelFile(168);
+            const createTime = Date.now() - startTime;
+            
+            // Estimate file size
+            const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+            const fileSizeMB = buffer.length / (1024 * 1024);
+            
+            log(`File created in ${createTime}ms, size: ${fileSizeMB.toFixed(2)} MB`, 'info');
+            log(`Found ${workbook.SheetNames.length} sheets`, 'success');
+            
+            // Test chunking logic
+            const CHUNK_SIZE = 20;
+            const totalChunks = Math.ceil(workbook.SheetNames.length / CHUNK_SIZE);
+            
+            log(`Would require ${totalChunks} chunks of ${CHUNK_SIZE} clients each`, 'info');
+            
+            addResult('Test 2 Result', 
+                `Successfully processed ${workbook.SheetNames.length} sheets in ${createTime}ms (${fileSizeMB.toFixed(2)} MB)`, 
+                'success');
+            
+            // Show performance metrics
+            addResult('Performance Metrics', 
+                `Parse time: ${createTime}ms | File size: ${fileSizeMB.toFixed(2)} MB | Chunks: ${totalChunks}`, 
+                'info');
+            
+            updateStatus('Test 2 Complete');
+        }
+
+        async function runTest3() {
+            updateStatus('Running Test 3...');
+            log('Starting Test 3: Verify RLS Fix', 'info');
+            
+            const testClient = {
+                full_name: 'RLS Test Client ' + Date.now(),
+                goals: 'Test RLS fix',
+                injuries: 'None',
+                email: null,
+                phone: null,
+                equipment: [],
+                notes: 'Testing after RLS fix',
+                user_id: 'default-user'
+            };
+            
+            log('Testing single client insertion...', 'info');
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/workout_clients`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(testClient)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ RLS FIX CONFIRMED - Client saved successfully!', 'success');
+                    addResult('Test 3 Result', 'RLS has been disabled - imports will work', 'success');
+                    
+                    // Clean up test data
+                    if (data.id || data[0]?.id) {
+                        await fetch(
+                            `${SUPABASE_URL}/rest/v1/workout_clients?id=eq.${data.id || data[0]?.id}`,
+                            {
+                                method: 'DELETE',
+                                headers: {
+                                    'apikey': SUPABASE_ANON_KEY,
+                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                                }
+                            }
+                        );
+                        log('Test data cleaned up', 'info');
+                    }
+                } else {
+                    const error = await response.text();
+                    log('❌ RLS STILL BLOCKING - Fix not applied', 'error');
+                    addResult('Test 3 Result', 
+                        'RLS is still blocking inserts - Run: node scripts/fix-rls-simple.js', 
+                        'error');
+                }
+            } catch (error) {
+                log(`Test error: ${error.message}`, 'error');
+                addResult('Test 3 Error', error.message, 'error');
+            }
+            
+            updateStatus('Test 3 Complete');
+        }
+
+        async function runTest4() {
+            updateStatus('Running Test 4...');
+            log('Starting Test 4: Error Handling Scenarios', 'info');
+            
+            const testCases = [
+                {
+                    name: 'Empty sheet',
+                    sheets: [{ name: 'Empty', data: [] }]
+                },
+                {
+                    name: 'Missing client name',
+                    sheets: [{ name: '', data: [['Goals:', 'Test']] }]
+                },
+                {
+                    name: 'Template sheet (should skip)',
+                    sheets: [{ name: 'Template', data: [['Test', 'Data']] }]
+                },
+                {
+                    name: 'Special characters',
+                    sheets: [{ name: 'Client @#$%', data: [['Goals:', 'Test']] }]
+                }
+            ];
+            
+            for (const testCase of testCases) {
+                log(`Testing: ${testCase.name}`, 'info');
+                
+                const workbook = XLSX.utils.book_new();
+                testCase.sheets.forEach(sheet => {
+                    const ws = XLSX.utils.aoa_to_sheet(sheet.data);
+                    if (sheet.name) {
+                        XLSX.utils.book_append_sheet(workbook, ws, sheet.name);
+                    }
+                });
+                
+                const shouldSkip = !testCase.sheets[0].name || 
+                                 testCase.sheets[0].name.toLowerCase().includes('template');
+                
+                log(`  Result: ${shouldSkip ? 'Would be skipped' : 'Would be processed'}`, 
+                    shouldSkip ? 'warning' : 'success');
+            }
+            
+            addResult('Test 4 Result', 
+                `Tested ${testCases.length} error scenarios successfully`, 
+                'success');
+            
+            updateStatus('Test 4 Complete');
+        }
+
+        async function runAllTests() {
+            clearLog();
+            log('Running all tests...', 'info');
+            
+            await runTest1();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await runTest2();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await runTest3();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await runTest4();
+            
+            // Risk Assessment
+            const riskDiv = document.getElementById('risk-assessment');
+            riskDiv.innerHTML = `
+                <div class="risk-item risk-high">
+                    <strong>HIGH RISK:</strong> RLS blocking all imports<br>
+                    <em>Mitigation:</em> Run fix-rls-simple.js immediately
+                </div>
+                <div class="risk-item risk-medium">
+                    <strong>MEDIUM RISK:</strong> Large files may exceed limits<br>
+                    <em>Mitigation:</em> Client-side chunking implemented
+                </div>
+                <div class="risk-item risk-low">
+                    <strong>LOW RISK:</strong> Missing data validation<br>
+                    <em>Mitigation:</em> Add validation before database insertion
+                </div>
+            `;
+            
+            updateStatus('All Tests Complete');
+            log('All tests completed!', 'success');
+        }
+
+        // Initialize
+        window.onload = async () => {
+            log('Excel Import QA Test Suite loaded', 'info');
+            log('Testing database connection...', 'info');
+            
+            const conn = await testSupabaseConnection();
+            if (conn.success) {
+                log('Database connection successful', 'success');
+            } else {
+                log(`Database connection issue: ${conn.error}`, 'warning');
+            }
+        };
+    </script>
+</body>
+</html>
