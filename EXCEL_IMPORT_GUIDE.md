@@ -4,12 +4,25 @@
 
 The Atlas AI Workouts platform supports importing client data from Excel files with multiple sheets. Each sheet tab represents a client, with their injuries and goals stored in the sheet content.
 
+## Recent Improvements (August 29, 2025)
+
+### Enhanced Capacity  
+- **Increased Sheet Limit**: Now supports up to 500 sheets per Excel file (previously 50)
+- **Better Performance**: Optimized memory management for large file processing
+- **Improved Error Handling**: Enhanced error recovery and user feedback
+
+### Bug Fixes
+- **UUID Error Fix**: Resolved database insertion issues with user ID handling
+- **RLS Compatibility**: Better handling of Row Level Security policies
+- **Memory Optimization**: Improved processing of large Excel files
+
 ## Supported File Formats
 
 - **Excel Files**: `.xlsx`, `.xls`
 - **Multiple Sheets**: Each sheet tab becomes a client
-- **File Size**: Up to 4MB (larger files use chunked processing)
-- **Sheet Limit**: Up to 50 sheets per request (larger files processed in chunks)
+- **File Size**: Up to 4MB (larger files use chunked processing)  
+- **Sheet Limit**: Up to 500 sheets per request (significantly increased capacity)
+- **Large File Processing**: Automatic chunking for files over 4MB or 50+ sheets
 
 ## Excel File Structure
 
@@ -75,10 +88,16 @@ The system will show:
 - Processed in batches of 10 sheets
 - Multiple requests for better reliability
 
-### Many Sheets (Over 50)
-- Batch processing recommended
-- Prevents timeout errors
-- Better memory management
+### Many Sheets (50-500)
+- Batch processing automatically applied
+- Handles up to 500 sheets in a single request
+- Optimized memory management for large files
+- Progress tracking for better user experience
+
+### Extra Large Files (500+ Sheets)
+- Contact support for handling files with more than 500 sheets  
+- Consider splitting into multiple files if possible
+- Custom processing may be available for enterprise users
 
 ## Common Issues and Solutions
 
@@ -161,7 +180,7 @@ For files with many sheets:
 ### Default Values
 - Goals: "No goals specified" if not found
 - Injuries: "No injuries reported" if not found
-- User ID: "default-user"
+- User ID: Automatically determined from authenticated session
 
 ## Troubleshooting Steps
 

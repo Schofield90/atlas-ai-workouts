@@ -5,25 +5,38 @@ A fully personalized gym workout generator powered by AI that learns continuousl
 ## Features
 
 - 🤖 **AI-Powered Workouts**: Generate personalized workouts based on client history, goals, injuries, and equipment
+- 📋 **SOPs & Context Management**: Train the AI with your Standard Operating Procedures and coaching methodology
 - 📚 **RAG System**: Semantic search through client messages and history for context-aware recommendations
 - 🔄 **Continuous Learning**: Feedback loop improves recommendations over time
 - 🏢 **Multi-Tenant**: Complete organization isolation with row-level security
-- 📊 **Excel Import**: Import clients from Excel files with multiple sheets
+- 📊 **Enhanced Excel Import**: Import up to 500 clients from multi-sheet Excel files
+- 🎨 **Modern Dark UI**: Complete dark mode with improved accessibility and contrast
 - ♿ **Accessibility First**: Zero axe violations, keyboard navigation, semantic HTML
 - 📤 **Export Options**: PDF, CSV, and shareable workout links
-- 🎨 **Unbranded**: Fully customizable branding for your gym or coaching business
+- 🎯 **Unbranded**: Fully customizable branding for your gym or coaching business
 - ☁️ **Cloud-Only**: Secure Supabase storage with no localStorage dependency
 
 ## Recent Updates (August 29, 2025)
 
-### Major Changes
+### New Features ✨
+- **SOPs & Context Management**: New `/context` page for documenting your training methodology and procedures
+- **10x Excel Import Capacity**: Increased from 50 to 500 sheets per Excel file for large client databases
+- **Complete Dark Mode**: Modern dark theme across all pages with improved contrast and accessibility
+- **AI Training Integration**: SOPs automatically feed into AI workout generation for consistent methodology
+
+### Major Changes 🔄
 - **Complete Migration**: Moved from localStorage to cloud-only storage
-- **Enhanced Excel Import**: Multi-sheet Excel import with automatic client detection
+- **Enhanced Excel Import**: Multi-sheet Excel import with automatic client detection and chunked processing
 - **Security Improvements**: All credentials now in environment variables
 - **RLS Management**: Tools for managing Row Level Security policies
-- **Performance Optimizations**: Chunked processing for large files
+- **Performance Optimizations**: Better memory management and error handling
 
-### Breaking Changes
+### Bug Fixes 🐛
+- **UUID Error Fix**: Resolved database insertion issues in Excel import
+- **UI Improvements**: Fixed duplicate className warnings and React issues
+- **RLS Compatibility**: Enhanced Row Level Security handling for imports
+
+### Breaking Changes ⚠️
 - localStorage support completely removed
 - Environment variables now required for all functionality
 - Database permissions may need adjustment (see [RLS Fix Instructions](RLS_FIX_INSTRUCTIONS.md))
@@ -36,7 +49,8 @@ A fully personalized gym workout generator powered by AI that learns continuousl
 - 🛠️ [Troubleshooting Guide](TROUBLESHOOTING.md) - Common issues and solutions
 
 ### Features and Usage  
-- 📊 [Excel Import Guide](EXCEL_IMPORT_GUIDE.md) - Detailed import instructions
+- 📋 [SOPs & Context Feature Guide](SOPS_CONTEXT_FEATURE.md) - Complete guide to AI training with SOPs
+- 📊 [Excel Import Guide](EXCEL_IMPORT_GUIDE.md) - Enhanced import instructions (up to 500 sheets)
 - 🔒 [Security Updates](SECURITY_UPDATES.md) - RLS configuration and credentials
 - 🔌 [API Documentation](API_DOCUMENTATION.md) - Complete API reference
 
