@@ -175,62 +175,26 @@ export default function ClientsPage() {
     setImportStatus(null)
 
     try {
-      const text = await file.text()
-      const lines = text.split('\n').filter(line => line.trim())
+      // Use the convert-excel endpoint which handles both CSV and Excel
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('action', 'import')
       
-      if (lines.length < 2) {
-        throw new Error('CSV file appears to be empty')
-      }
-
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-      const nameIndex = headers.findIndex(h => h.includes('name'))
-      const emailIndex = headers.findIndex(h => h.includes('email'))
-      const phoneIndex = headers.findIndex(h => h.includes('phone'))
-      const goalsIndex = headers.findIndex(h => h.includes('goal'))
-      const injuriesIndex = headers.findIndex(h => h.includes('injur'))
-      const equipmentIndex = headers.findIndex(h => h.includes('equipment'))
-      const notesIndex = headers.findIndex(h => h.includes('note'))
-
-      if (nameIndex === -1) {
-        throw new Error('CSV must have a name column')
-      }
-
-      const newClients: Partial<WorkoutClient>[] = []
+      const response = await fetch('/api/clients/convert-excel', {
+        method: 'POST',
+        body: formData
+      })
       
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim())
-        if (!values[nameIndex]) continue
-
-        const client: Partial<WorkoutClient> = {
-          full_name: values[nameIndex],
-          email: emailIndex !== -1 ? values[emailIndex] : undefined,
-          phone: phoneIndex !== -1 ? values[phoneIndex] : undefined,
-          goals: goalsIndex !== -1 ? values[goalsIndex] : undefined,
-          injuries: injuriesIndex !== -1 ? values[injuriesIndex] : undefined,
-          equipment: equipmentIndex !== -1 && values[equipmentIndex] 
-            ? values[equipmentIndex].split(';').map(e => e.trim())
-            : [],
-          notes: notesIndex !== -1 ? values[notesIndex] : undefined,
-        }
-
-        newClients.push(client)
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || result.suggestion || 'Failed to import file')
       }
-
-      // Import to Supabase
-      let successCount = 0
-      for (const client of newClients) {
-        try {
-          await clientService.createClient(client)
-          successCount++
-        } catch (error) {
-          console.error('Error importing client:', client.full_name, error)
-        }
-      }
-
+      
       await loadClients()
       setImportStatus({ 
         type: 'success', 
-        message: `Successfully imported ${successCount} of ${newClients.length} clients to cloud storage` 
+        message: `Successfully imported ${result.imported} of ${result.total} clients to cloud storage` 
       })
     } catch (error: any) {
       setImportStatus({ type: 'error', message: error.message })
@@ -494,13 +458,22 @@ export default function ClientsPage() {
     setAnalysisResult(null)
     
     try {
+      // First try the simpler test endpoint
       const formData = new FormData()
       formData.append('file', file)
       
-      const response = await fetch('/api/clients/analyze-excel', {
+      let response = await fetch('/api/clients/test-excel', {
         method: 'POST',
         body: formData
       })
+      
+      if (!response.ok) {
+        // Fallback to analyze endpoint
+        response = await fetch('/api/clients/analyze-excel', {
+          method: 'POST',
+          body: formData
+        })
+      }
       
       const result = await response.json()
       
@@ -653,9 +626,10 @@ Check browser console for full analysis.`
               onClick={() => analyzeInputRef.current?.click()}
               disabled={importing}
               className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center gap-2 disabled:opacity-50"
+              title="Analyze your Excel file to see its structure"
             >
               <AlertCircle className="w-5 h-5" />
-              Analyze Excel
+              Analyze File
             </button>
             <button
               onClick={exportCSV}
@@ -671,7 +645,7 @@ Check browser console for full analysis.`
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
