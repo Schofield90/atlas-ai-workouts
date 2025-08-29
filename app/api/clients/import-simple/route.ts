@@ -26,10 +26,35 @@ export async function POST(request: NextRequest) {
     
     // Import xlsx on server side
     const XLSX = require('xlsx')
-    const workbook = XLSX.read(buffer, { type: 'buffer' })
+    const workbook = XLSX.read(buffer, { 
+      type: 'buffer',
+      cellDates: true,
+      cellFormula: false,
+      cellHTML: false,
+      cellNF: false,
+      cellStyles: false,
+      cellText: false,
+      WTF: true // Ignore errors and be more permissive
+    })
+    
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      return NextResponse.json({ error: 'No sheets found in Excel file' }, { status: 400 })
+    }
+    
     const sheetName = workbook.SheetNames[0]
     const worksheet = workbook.Sheets[sheetName]
-    const data = XLSX.utils.sheet_to_json(worksheet)
+    
+    if (!worksheet) {
+      return NextResponse.json({ error: 'Unable to read worksheet' }, { status: 400 })
+    }
+    
+    // Try multiple parsing strategies
+    let data = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false })
+    
+    // If no data, try raw values
+    if (!data || data.length === 0) {
+      data = XLSX.utils.sheet_to_json(worksheet, { raw: true, defval: '' })
+    }
     
     if (!data || data.length === 0) {
       return NextResponse.json({ error: 'No data found in Excel file' }, { status: 400 })
@@ -39,23 +64,65 @@ export async function POST(request: NextRequest) {
     const supabase = createClient()
     const clientsToInsert = []
     
-    // First, prepare all clients
-    for (const row of data) {
-      const rowData = row as any
-      const name = rowData['Name'] || rowData['Full Name'] || rowData['Client Name'] || ''
+    // First, prepare all clients with flexible column matching
+    for (let i = 0; i < data.length; i++) {
+      const rowData = data[i] as any
       
-      if (!name || !name.trim()) continue
+      // Log first few rows for debugging
+      if (i < 3) {
+        console.log(`Row ${i}:`, Object.keys(rowData), rowData)
+      }
+      
+      // Flexible column name matching
+      const findValue = (keys: string[]) => {
+        for (const key of keys) {
+          if (rowData[key] !== undefined && rowData[key] !== null && rowData[key] !== '') {
+            return String(rowData[key]).trim()
+          }
+          // Case-insensitive matching
+          const found = Object.keys(rowData).find(k => {
+            const normalizedK = k.toLowerCase().replace(/[^a-z0-9]/g, '')
+            const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+            return normalizedK === normalizedKey || normalizedK.includes(normalizedKey)
+          })
+          if (found && rowData[found] !== undefined && rowData[found] !== null && rowData[found] !== '') {
+            return String(rowData[found]).trim()
+          }
+        }
+        return null
+      }
+      
+      const name = findValue(['Name', 'Full Name', 'Client Name', 'Client', 'Customer', 'Member', 'First Name', 'Person'])
+      const email = findValue(['Email', 'Email Address', 'E-mail', 'Mail', 'EmailAddress'])
+      const phone = findValue(['Phone', 'Phone Number', 'Mobile', 'Cell', 'Contact', 'Tel', 'Telephone'])
+      const goals = findValue(['Goals', 'Fitness Goals', 'Goal', 'Objectives', 'Training Goals'])
+      const injuries = findValue(['Injuries', 'Medical History', 'Medical', 'Health Issues', 'Health'])
+      const equipment = findValue(['Equipment', 'Available Equipment', 'Gear', 'Tools'])
+      const notes = findValue(['Notes', 'Comments', 'Additional Info', 'Info', 'Remarks'])
+      
+      // Handle separate first/last name columns
+      let finalName = name
+      if (!finalName) {
+        const firstName = findValue(['First Name', 'FirstName', 'First'])
+        const lastName = findValue(['Last Name', 'LastName', 'Last', 'Surname'])
+        if (firstName || lastName) {
+          finalName = [firstName, lastName].filter(Boolean).join(' ')
+        }
+      }
+      
+      // Skip if no valid name or if it's a header row
+      if (!finalName || finalName === 'Name' || finalName === 'Full Name') continue
       
       const client = {
-        full_name: name.trim(),
-        email: rowData['Email'] || rowData['Email Address'] || null,
-        phone: rowData['Phone'] || rowData['Phone Number'] || null,
-        goals: rowData['Goals'] || rowData['Fitness Goals'] || null,
-        injuries: rowData['Injuries'] || rowData['Medical History'] || null,
-        equipment: rowData['Equipment'] 
-          ? String(rowData['Equipment']).split(/[,;]/).map(e => e.trim()).filter(Boolean)
+        full_name: finalName,
+        email: email || null,
+        phone: phone || null,
+        goals: goals || null,
+        injuries: injuries || null,
+        equipment: equipment 
+          ? String(equipment).split(/[,;|]/).map(e => e.trim()).filter(Boolean)
           : [],
-        notes: rowData['Notes'] || rowData['Comments'] || null,
+        notes: notes || null,
         user_id: 'default-user'
       }
       

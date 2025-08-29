@@ -258,29 +258,166 @@ export default function ClientsPage() {
       }
       
       const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const data = XLSX.utils.sheet_to_json(worksheet)
+      console.log('File loaded, size:', arrayBuffer.byteLength, 'bytes')
       
+      // Try reading with different options
+      let workbook
+      try {
+        // Try with more permissive options
+        workbook = XLSX.read(arrayBuffer, { 
+          type: 'array', 
+          cellDates: true,
+          cellFormula: false,
+          cellHTML: false,
+          cellNF: false,
+          cellStyles: false,
+          cellText: false,
+          WTF: true // Ignore errors
+        })
+      } catch (e) {
+        console.error('Failed to read as array buffer, trying binary string')
+        const binaryStr = String.fromCharCode(...new Uint8Array(arrayBuffer))
+        workbook = XLSX.read(binaryStr, { type: 'binary', WTF: true })
+      }
+      
+      console.log('Workbook sheets:', workbook.SheetNames)
+      
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error('No sheets found in Excel file')
+      }
+      
+      const sheetName = workbook.SheetNames[0]
+      console.log('Using sheet:', sheetName)
+      
+      const worksheet = workbook.Sheets[sheetName]
+      if (!worksheet) {
+        throw new Error(`Sheet "${sheetName}" not found`)
+      }
+      
+      // Try different parsing methods
+      let data = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false, dateNF: 'YYYY-MM-DD' })
+      console.log('Initial parse found', data.length, 'rows')
+      
+      // If no data, try with raw option
       if (!data || data.length === 0) {
-        throw new Error('No data found in Excel file')
+        data = XLSX.utils.sheet_to_json(worksheet, { raw: true, defval: '' })
+        console.log('Raw parse found', data.length, 'rows')
+      }
+      
+      // If still no data, try manual parsing
+      if (!data || data.length === 0) {
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+        console.log('Sheet range:', range)
+        
+        // Manual parsing with header detection
+        const headers = []
+        const rows = []
+        
+        // Get headers from first row
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: range.s.r, c: col })
+          const cell = worksheet[cellAddress]
+          headers.push(cell ? String(cell.v || '').trim() : `Column${col + 1}`)
+        }
+        console.log('Headers:', headers)
+        
+        // Get data rows
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const rowData: any = {}
+          let hasData = false
+          
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+            const cell = worksheet[cellAddress]
+            const header = headers[col - range.s.c]
+            
+            if (cell && cell.v !== undefined && cell.v !== null && cell.v !== '') {
+              rowData[header] = cell.v
+              hasData = true
+            }
+          }
+          
+          if (hasData) rows.push(rowData)
+        }
+        
+        data = rows
+        console.log('Manual parse found', data.length, 'rows')
+        
+        if (data.length === 0) {
+          throw new Error('No data found in Excel file. Please check the file format.')
+        }
       }
       
       console.log(`Found ${data.length} rows in Excel file`)
       
-      // Prepare clients data
-      const clients = data.map((row: any) => ({
-        name: row['Name'] || row['Full Name'] || row['Client Name'] || '',
-        email: row['Email'] || row['Email Address'] || null,
-        phone: row['Phone'] || row['Phone Number'] || null,
-        goals: row['Goals'] || row['Fitness Goals'] || null,
-        injuries: row['Injuries'] || row['Medical History'] || null,
-        equipment: row['Equipment'] 
-          ? String(row['Equipment']).split(/[,;]/).map(e => e.trim()).filter(Boolean)
-          : [],
-        notes: row['Notes'] || row['Comments'] || null
-      })).filter(c => c.name && c.name.trim())
+      // Log first row to see column names
+      if (data.length > 0) {
+        console.log('First row keys:', Object.keys(data[0]))
+        console.log('First row data:', data[0])
+      }
+      
+      // Prepare clients data with flexible column matching
+      const clients = data.map((row: any, index: number) => {
+        // Log first few rows for debugging
+        if (index < 3) {
+          console.log(`Row ${index}:`, row)
+        }
+        
+        // Try to find name in various possible column names (case-insensitive)
+        const findValue = (keys: string[]) => {
+          for (const key of keys) {
+            // Check exact match
+            if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+              return String(row[key]).trim()
+            }
+            // Check case-insensitive match
+            const found = Object.keys(row).find(k => {
+              const normalizedK = k.toLowerCase().replace(/[^a-z0-9]/g, '')
+              const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+              return normalizedK === normalizedKey || normalizedK.includes(normalizedKey) || normalizedKey.includes(normalizedK)
+            })
+            if (found && row[found] !== undefined && row[found] !== null && row[found] !== '') {
+              return String(row[found]).trim()
+            }
+          }
+          // If no specific column found, look for first non-empty value (might be name)
+          if (keys.includes('Name') || keys.includes('Full Name')) {
+            const firstValue = Object.values(row).find(v => v && String(v).trim() && !String(v).includes('@'))
+            if (firstValue) return String(firstValue).trim()
+          }
+          return null
+        }
+        
+        const name = findValue(['Name', 'Full Name', 'Client Name', 'Client', 'Customer', 'Member', 'First Name', 'Last Name', 'Person', 'Athlete'])
+        const email = findValue(['Email', 'Email Address', 'E-mail', 'Mail', 'EmailAddress', 'Contact Email'])
+        const phone = findValue(['Phone', 'Phone Number', 'Mobile', 'Cell', 'Contact', 'Tel', 'Telephone', 'Contact Number'])
+        const goals = findValue(['Goals', 'Fitness Goals', 'Goal', 'Objectives', 'Training Goals', 'Targets'])
+        const injuries = findValue(['Injuries', 'Medical History', 'Medical', 'Health Issues', 'Health', 'Conditions', 'Medical Conditions'])
+        const equipment = findValue(['Equipment', 'Available Equipment', 'Gear', 'Tools', 'Resources'])
+        const notes = findValue(['Notes', 'Comments', 'Additional Info', 'Info', 'Remarks', 'Additional Notes', 'Other'])
+        
+        // Handle special case where first/last name are separate
+        let finalName = name
+        if (!finalName) {
+          const firstName = findValue(['First Name', 'FirstName', 'First', 'Given Name'])
+          const lastName = findValue(['Last Name', 'LastName', 'Last', 'Surname', 'Family Name'])
+          if (firstName || lastName) {
+            finalName = [firstName, lastName].filter(Boolean).join(' ')
+          }
+        }
+        
+        return {
+          name: finalName || '',
+          email: email || null,
+          phone: phone || null,
+          goals: goals || null,
+          injuries: injuries || null,
+          equipment: equipment 
+            ? String(equipment).split(/[,;|]/).map(e => e.trim()).filter(Boolean)
+            : [],
+          notes: notes || null
+        }
+      }).filter(c => c.name && String(c.name).trim() && c.name !== 'Name' && c.name !== 'Full Name')
       
       console.log(`Prepared ${clients.length} valid clients for import`)
       
