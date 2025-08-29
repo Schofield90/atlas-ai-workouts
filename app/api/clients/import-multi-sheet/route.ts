@@ -7,7 +7,7 @@ export const maxDuration = 60
 // Constants for chunked processing
 const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4MB
 const BATCH_SIZE = 10 // Process 10 sheets at a time
-const MAX_SHEETS_PER_REQUEST = 50 // Maximum sheets to process in a single request
+const MAX_SHEETS_PER_REQUEST = 500 // Increased to handle larger Excel files with many sheets
 
 export async function POST(request: NextRequest) {
   try {

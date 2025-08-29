@@ -190,7 +190,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-8 grid grid-cols-2 md:grid-cols-5 gap-4">
           <Link
             href="/clients/new"
             className="p-4 bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow text-center"
@@ -221,6 +221,14 @@ export default function DashboardPage() {
           >
             <Dumbbell className="w-6 h-6 text-orange-500 mx-auto mb-2" />
             <span className="text-sm text-gray-300">All Workouts</span>
+          </Link>
+          
+          <Link
+            href="/context"
+            className="p-4 bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow text-center border-2 border-purple-600"
+          >
+            <Brain className="w-6 h-6 text-purple-500 mx-auto mb-2" />
+            <span className="text-sm text-gray-300 font-semibold">SOPs & Context</span>
           </Link>
         </div>
       </main>
