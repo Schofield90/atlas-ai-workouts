@@ -4,8 +4,23 @@ import { createClient } from '@/lib/db/client-fixed'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
+// Constants for chunked processing
+const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4MB
+const BATCH_SIZE = 10 // Process 10 sheets at a time
+const MAX_SHEETS_PER_REQUEST = 50 // Maximum sheets to process in a single request
+
 export async function POST(request: NextRequest) {
   try {
+    // Check if this is a chunked processing request
+    const url = new URL(request.url)
+    const isChunked = url.searchParams.get('chunked') === 'true'
+    const chunkIndex = parseInt(url.searchParams.get('chunkIndex') || '0')
+    const totalChunks = parseInt(url.searchParams.get('totalChunks') || '1')
+    
+    if (isChunked) {
+      return await processChunkedRequest(request, chunkIndex, totalChunks)
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     
@@ -13,7 +28,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    console.log('Processing multi-sheet Excel file:', file.name)
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ 
+        error: 'File too large',
+        fileSize: file.size,
+        maxSize: MAX_FILE_SIZE,
+        needsChunking: true,
+        message: 'File exceeds 4MB limit. Please use the chunked upload process.'
+      }, { status: 413 })
+    }
+
+    console.log('Processing multi-sheet Excel file:', file.name, `(${Math.round(file.size / 1024)}KB)`)
     
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
@@ -41,20 +67,36 @@ export async function POST(request: NextRequest) {
     
     console.log(`Found ${workbook.SheetNames.length} sheets (potential clients)`)
     
+    // If too many sheets, suggest chunked processing
+    if (workbook.SheetNames.length > MAX_SHEETS_PER_REQUEST) {
+      return NextResponse.json({
+        error: 'Too many sheets',
+        sheetCount: workbook.SheetNames.length,
+        maxSheetsPerRequest: MAX_SHEETS_PER_REQUEST,
+        needsChunking: true,
+        message: `File has ${workbook.SheetNames.length} sheets. Maximum ${MAX_SHEETS_PER_REQUEST} sheets per request. Please use chunked processing.`,
+        sheetNames: workbook.SheetNames.slice(0, 20) // Show first 20 sheet names for reference
+      }, { status: 413 })
+    }
+    
     const supabase = createClient()
     const results = []
     const errors = []
     
-    // Process each sheet as a separate client
-    for (const sheetName of workbook.SheetNames) {
-      try {
-        // Skip sheets that might not be clients
-        if (sheetName.toLowerCase().includes('template') || 
-            sheetName.toLowerCase().includes('example') ||
-            sheetName.toLowerCase().includes('instructions')) {
-          console.log(`Skipping non-client sheet: ${sheetName}`)
-          continue
-        }
+    // Process sheets in batches to avoid memory issues
+    for (let i = 0; i < workbook.SheetNames.length; i += BATCH_SIZE) {
+      const batchSheets = workbook.SheetNames.slice(i, i + BATCH_SIZE)
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(workbook.SheetNames.length / BATCH_SIZE)} (${batchSheets.length} sheets)`)
+      
+      for (const sheetName of batchSheets) {
+        try {
+          // Skip sheets that might not be clients
+          if (sheetName.toLowerCase().includes('template') || 
+              sheetName.toLowerCase().includes('example') ||
+              sheetName.toLowerCase().includes('instructions')) {
+            console.log(`Skipping non-client sheet: ${sheetName}`)
+            continue
+          }
         
         const worksheet = workbook.Sheets[sheetName]
         
@@ -177,9 +219,15 @@ export async function POST(request: NextRequest) {
           console.log(`✓ Imported ${clientName}`)
         }
         
-      } catch (sheetError: any) {
-        console.error(`Error processing sheet ${sheetName}:`, sheetError)
-        errors.push({ sheet: sheetName, error: sheetError.message })
+        } catch (sheetError: any) {
+          console.error(`Error processing sheet ${sheetName}:`, sheetError)
+          errors.push({ sheet: sheetName, error: sheetError.message })
+        }
+      }
+      
+      // Add delay between batches to avoid overwhelming the system
+      if (i + BATCH_SIZE < workbook.SheetNames.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
     }
     
@@ -197,6 +245,80 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       error: error.message || 'Failed to import multi-sheet file',
       suggestion: 'Ensure each sheet/tab represents a client with injuries and goals in the top cells'
+    }, { status: 500 })
+  }
+}
+
+async function processChunkedRequest(request: NextRequest, chunkIndex: number, totalChunks: number) {
+  try {
+    const body = await request.json()
+    const { clients } = body
+    
+    if (!clients || !Array.isArray(clients)) {
+      return NextResponse.json({ error: 'No clients data provided in chunk' }, { status: 400 })
+    }
+    
+    console.log(`Processing chunk ${chunkIndex + 1}/${totalChunks} with ${clients.length} clients`)
+    
+    const supabase = createClient()
+    const results = []
+    const errors = []
+    
+    // Process clients in smaller batches
+    const batchSize = 5
+    
+    for (let i = 0; i < clients.length; i += batchSize) {
+      const batch = clients.slice(i, i + batchSize)
+      
+      try {
+        // Prepare clients with default values
+        const preparedBatch = batch.map((client: any) => ({
+          full_name: client.full_name || client.name || 'Unknown',
+          email: client.email || null,
+          phone: client.phone || null,
+          goals: client.goals || 'No goals specified',
+          injuries: client.injuries || 'No injuries reported',
+          equipment: Array.isArray(client.equipment) ? client.equipment : [],
+          notes: client.notes || `Imported from sheet: ${client.sheetName || 'Unknown'}`,
+          user_id: 'default-user'
+        }))
+        
+        const { data: newClients, error } = await supabase
+          .from('workout_clients')
+          .insert(preparedBatch)
+          .select()
+        
+        if (!error && newClients) {
+          results.push(...newClients)
+        } else if (error) {
+          console.error(`Batch error:`, error)
+          errors.push({ batch: i/batchSize + 1, error: error.message })
+        }
+      } catch (e: any) {
+        console.error(`Error inserting batch:`, e)
+        errors.push({ batch: i/batchSize + 1, error: e.message })
+      }
+      
+      // Small delay between batches
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+    
+    return NextResponse.json({
+      success: true,
+      chunkIndex,
+      totalChunks,
+      imported: results.length,
+      total: clients.length,
+      errors: errors.length > 0 ? errors : undefined,
+      clients: results.map(c => c.full_name)
+    })
+    
+  } catch (error: any) {
+    console.error('Chunked import error:', error)
+    return NextResponse.json({ 
+      error: error.message || 'Failed to process chunk',
+      chunkIndex,
+      totalChunks
     }, { status: 500 })
   }
 }

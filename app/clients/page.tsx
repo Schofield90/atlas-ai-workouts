@@ -39,7 +39,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<WorkoutClient[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
-  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null)
+  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const excelInputRef = useRef<HTMLInputElement>(null)
   const analyzeInputRef = useRef<HTMLInputElement>(null)
@@ -458,17 +458,77 @@ export default function ClientsPage() {
     setImportStatus(null)
     
     try {
+      // Check file size before uploading - process client-side if > 4MB
+      if (file.size > 4 * 1024 * 1024) { // 4MB
+        setImportStatus({ 
+          type: 'info', 
+          message: `Large file detected (${Math.round(file.size / 1024 / 1024 * 10) / 10}MB). Processing client-side...` 
+        })
+        return await processLargeExcelClientSide(file)
+      }
+      
       const formData = new FormData()
       formData.append('file', file)
       
-      const response = await fetch('/api/clients/import-multi-sheet', {
-        method: 'POST',
-        body: formData
-      })
+      let response
+      let responseText = ''
+      let result
       
-      const result = await response.json()
+      try {
+        response = await fetch('/api/clients/import-multi-sheet', {
+          method: 'POST',
+          body: formData
+        })
+        
+        responseText = await response.text()
+        
+        // Try to parse as JSON
+        try {
+          result = JSON.parse(responseText)
+        } catch (jsonError) {
+          // Handle non-JSON error responses
+          console.error('Non-JSON response:', responseText)
+          
+          if (responseText.includes('Request Entity Too Large') || 
+              responseText.includes('413') || 
+              response.status === 413) {
+            setImportStatus({ 
+              type: 'info', 
+              message: `Request too large (${Math.round(file.size / 1024 / 1024 * 10) / 10}MB). Switching to client-side processing...` 
+            })
+            return await processLargeExcelClientSide(file)
+          }
+          
+          throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`)
+        }
+        
+      } catch (fetchError: any) {
+        // Handle network errors and fetch failures
+        console.error('Network/fetch error:', fetchError)
+        
+        if (fetchError.message.includes('Failed to fetch') || 
+            fetchError.message.includes('network') || 
+            fetchError.message.includes('timeout') ||
+            fetchError.name === 'TypeError') {
+          setImportStatus({ 
+            type: 'info', 
+            message: `Network error detected (likely file too large). Switching to client-side processing...` 
+          })
+          return await processLargeExcelClientSide(file)
+        }
+        
+        throw fetchError
+      }
       
       if (!response.ok) {
+        // Check if we need to use chunked processing
+        if (result.needsChunking || response.status === 413) {
+          setImportStatus({ 
+            type: 'info', 
+            message: `File requires chunked processing (${Math.round(file.size / 1024 / 1024 * 10) / 10}MB, ${result.sheetCount || 'many'} sheets). Switching to client-side processing...` 
+          })
+          return await processLargeExcelClientSide(file)
+        }
         throw new Error(result.error || result.suggestion || 'Failed to import multi-sheet file')
       }
       
@@ -483,13 +543,286 @@ export default function ClientsPage() {
         type: result.imported > 0 ? 'success' : 'error', 
         message 
       })
+      
     } catch (error: any) {
-      setImportStatus({ type: 'error', message: error.message })
+      console.error('Import error:', error)
+      setImportStatus({ type: 'error', message: error.message || 'Failed to import multi-sheet file' })
     } finally {
       setImporting(false)
       if (multiSheetInputRef.current) multiSheetInputRef.current.value = ''
     }
   }
+
+  async function processLargeExcelClientSide(file: File) {
+    try {
+      setImportStatus({ type: 'info', message: 'Processing Excel file client-side...' })
+
+      // Process file client-side using xlsx library
+      const arrayBuffer = await file.arrayBuffer()
+      
+      // Import xlsx dynamically to avoid SSR issues
+      const xlsxModule = await import('xlsx')
+      const XLSX = xlsxModule.default || xlsxModule
+      
+      if (!XLSX || !XLSX.read) {
+        throw new Error('Excel library not available. Please refresh the page and try again.')
+      }
+
+      // Read workbook with optimized settings
+      const workbook = XLSX.read(arrayBuffer, {
+        type: 'array',
+        cellDates: true,
+        cellFormula: false,
+        cellHTML: false,
+        cellNF: false,
+        cellStyles: false,
+        cellText: false,
+        raw: false,
+        dense: false,
+        WTF: true // Ignore errors
+      })
+
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error('No sheets found in Excel file')
+      }
+
+      setImportStatus({ 
+        type: 'info', 
+        message: `Found ${workbook.SheetNames.length} sheets. Extracting client data...` 
+      })
+
+      // Extract client data from all sheets
+      const allClients: any[] = []
+      const sheetErrors: any[] = []
+
+      for (const sheetName of workbook.SheetNames) {
+        try {
+          // Skip template/example sheets
+          if (sheetName.toLowerCase().includes('template') || 
+              sheetName.toLowerCase().includes('example') ||
+              sheetName.toLowerCase().includes('instructions') ||
+              sheetName.toLowerCase().includes('readme')) {
+            continue
+          }
+
+          const worksheet = workbook.Sheets[sheetName]
+          if (!worksheet) continue
+
+          // Extract name from sheet name
+          const clientName = sheetName.trim()
+          
+          // Extract injuries and goals from cells
+          const getCellValue = (address: string) => {
+            const cell = worksheet[address]
+            if (!cell) return null
+            return cell.v ? String(cell.v).trim() : null
+          }
+
+          const findValueAfterLabel = (label: string) => {
+            const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:Z100')
+            
+            for (let row = range.s.r; row <= Math.min(range.e.r, 20); row++) {
+              for (let col = range.s.c; col <= Math.min(range.e.c, 10); col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: row, c: col })
+                const cell = worksheet[cellAddress]
+                
+                if (cell && cell.v) {
+                  const cellValue = String(cell.v).toLowerCase()
+                  if (cellValue.includes(label.toLowerCase())) {
+                    // Check the cell to the right or below for the value
+                    const rightAddress = XLSX.utils.encode_cell({ r: row, c: col + 1 })
+                    const belowAddress = XLSX.utils.encode_cell({ r: row + 1, c: col })
+                    
+                    const rightCell = worksheet[rightAddress]
+                    const belowCell = worksheet[belowAddress]
+                    
+                    if (rightCell && rightCell.v) {
+                      return String(rightCell.v).trim()
+                    } else if (belowCell && belowCell.v) {
+                      return String(belowCell.v).trim()
+                    }
+                  }
+                }
+              }
+            }
+            return null
+          }
+
+          // Try to extract injuries and goals from common locations
+          let injuries = getCellValue('B1') || getCellValue('A2') || getCellValue('B2') || 
+                        findValueAfterLabel('injur') || findValueAfterLabel('medical') || 
+                        findValueAfterLabel('health')
+          
+          let goals = getCellValue('B2') || getCellValue('A3') || getCellValue('B3') ||
+                     findValueAfterLabel('goal') || findValueAfterLabel('objective') || 
+                     findValueAfterLabel('target')
+
+          // If not found, try to parse the sheet more thoroughly
+          if (!injuries || !goals) {
+            const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' })
+            
+            for (let i = 0; i < Math.min(sheetData.length, 15); i++) {
+              const row = sheetData[i] as any[]
+              if (!row) continue
+              
+              for (let j = 0; j < Math.min(row.length, 8); j++) {
+                const cellValue = String(row[j]).toLowerCase()
+                
+                if ((cellValue.includes('injur') || cellValue.includes('medical') || cellValue.includes('health')) && !injuries) {
+                  if (j + 1 < row.length && row[j + 1]) {
+                    injuries = String(row[j + 1]).trim()
+                  } else if (i + 1 < sheetData.length) {
+                    const nextRow = sheetData[i + 1] as any[]
+                    if (nextRow && nextRow[j]) {
+                      injuries = String(nextRow[j]).trim()
+                    }
+                  }
+                }
+                
+                if ((cellValue.includes('goal') || cellValue.includes('objective') || cellValue.includes('target')) && !goals) {
+                  if (j + 1 < row.length && row[j + 1]) {
+                    goals = String(row[j + 1]).trim()
+                  } else if (i + 1 < sheetData.length) {
+                    const nextRow = sheetData[i + 1] as any[]
+                    if (nextRow && nextRow[j]) {
+                      goals = String(nextRow[j]).trim()
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Add client if we have at least a name
+          if (clientName && clientName.length > 0) {
+            allClients.push({
+              full_name: clientName,
+              goals: goals || 'No goals specified',
+              injuries: injuries || 'No injuries reported',
+              email: null,
+              phone: null,
+              equipment: [],
+              notes: null,
+              sheetName: sheetName
+            })
+          }
+
+        } catch (sheetError) {
+          console.error(`Error processing sheet ${sheetName}:`, sheetError)
+          sheetErrors.push({ sheet: sheetName, error: String(sheetError) })
+        }
+      }
+
+      if (allClients.length === 0) {
+        throw new Error('No valid client data found in any sheets')
+      }
+
+      setImportStatus({ 
+        type: 'info', 
+        message: `Extracted ${allClients.length} clients. Sending to server in chunks...` 
+      })
+
+      // Send data in chunks of 20 clients to the server
+      const chunkSize = 20
+      const totalClients = allClients.length
+      const totalChunks = Math.ceil(totalClients / chunkSize)
+      
+      let totalImported = 0
+      const allErrors: any[] = [...sheetErrors]
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const startIndex = chunkIndex * chunkSize
+        const endIndex = Math.min(startIndex + chunkSize - 1, totalClients - 1)
+        const chunk = allClients.slice(startIndex, endIndex + 1)
+        
+        // Show progress like "Processing chunk 1 of 9..."
+        setImportStatus({ 
+          type: 'info', 
+          message: `Processing chunk ${chunkIndex + 1} of ${totalChunks}... (clients ${startIndex + 1}-${endIndex + 1})` 
+        })
+
+        try {
+          const response = await fetch(`/api/clients/import-large-excel?startIndex=${startIndex}&endIndex=${endIndex}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clients: chunk })
+          })
+
+          let result
+          try {
+            const responseText = await response.text()
+            result = JSON.parse(responseText)
+          } catch (parseError) {
+            throw new Error('Server returned invalid response format')
+          }
+
+          if (!response.ok) {
+            throw new Error(result.error || `Server error: ${response.status}`)
+          }
+
+          totalImported += result.successCount || 0
+          
+          if (result.errors && result.errors.length > 0) {
+            allErrors.push(...result.errors)
+          }
+
+          console.log(`✓ Chunk ${chunkIndex + 1}: Imported ${result.successCount} clients`)
+
+        } catch (chunkError) {
+          console.error(`Error importing chunk ${chunkIndex + 1}:`, chunkError)
+          allErrors.push({ 
+            chunk: chunkIndex + 1, 
+            error: String(chunkError),
+            clientRange: `${startIndex + 1}-${endIndex + 1}`
+          })
+        }
+
+        // Add small delay between chunks to avoid overwhelming the server
+        if (chunkIndex < totalChunks - 1) {
+          await new Promise(resolve => setTimeout(resolve, 250))
+        }
+      }
+
+      // Refresh client list
+      await loadClients()
+
+      // Show final results
+      let message = `Successfully processed ${totalClients} clients from ${workbook.SheetNames.length} sheets.`
+      message += `\nImported: ${totalImported} clients`
+      
+      if (allErrors.length > 0) {
+        const errorCount = allErrors.length
+        message += `\nErrors encountered: ${errorCount}`
+        
+        // Show first few errors
+        const errorsToShow = allErrors.slice(0, 5).map((e: any) => {
+          if (e.sheet) return `- Sheet "${e.sheet}": ${e.error}`
+          if (e.chunk) return `- Chunk ${e.chunk} (clients ${e.clientRange}): ${e.error}`
+          return `- ${e.error || 'Unknown error'}`
+        }).join('\n')
+        
+        message += `\n\nError details:\n${errorsToShow}`
+        if (allErrors.length > 5) {
+          message += `\n... and ${allErrors.length - 5} more errors`
+        }
+      }
+
+      setImportStatus({
+        type: totalImported > 0 ? 'success' : 'error',
+        message
+      })
+
+    } catch (error: any) {
+      console.error('Large file client-side processing error:', error)
+      setImportStatus({ 
+        type: 'error', 
+        message: error.message || 'Failed to process Excel file client-side' 
+      })
+    }
+  }
+
   
   async function analyzeExcel(file: File) {
     setImporting(true)
@@ -617,10 +950,14 @@ Check browser console for full analysis.`
         <div className={`mb-4 p-4 rounded-lg flex items-start gap-2 ${
           importStatus.type === 'success' 
             ? 'bg-green-50 text-green-800' 
+            : importStatus.type === 'info'
+            ? 'bg-blue-50 text-blue-800'
             : 'bg-red-50 text-red-800'
         }`}>
           {importStatus.type === 'success' ? (
             <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          ) : importStatus.type === 'info' ? (
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-600" />
           ) : (
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           )}
