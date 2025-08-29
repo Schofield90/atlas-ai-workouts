@@ -913,7 +913,7 @@ Check browser console for full analysis.`
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <div className="bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-8 rounded-xl mb-6">
+      <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white p-8 rounded-xl mb-6 shadow-xl">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -934,10 +934,10 @@ Check browser console for full analysis.`
       {importStatus && (
         <div className={`mb-4 p-4 rounded-lg flex items-start gap-2 ${
           importStatus.type === 'success' 
-            ? 'bg-green-50 text-green-800' 
+            ? 'bg-green-900/30 text-green-400 border border-green-800' 
             : importStatus.type === 'info'
-            ? 'bg-blue-50 text-blue-800'
-            : 'bg-red-50 text-red-800'
+            ? 'bg-blue-900/30 text-blue-400 border border-blue-800'
+            : 'bg-red-900/30 text-red-400 border border-red-800'
         }`}>
           {importStatus.type === 'success' ? (
             <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -950,11 +950,12 @@ Check browser console for full analysis.`
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6 mb-6">
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           <input
             type="text"
             placeholder="Search clients..."
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 px-3 py-2 rounded-lg"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -962,7 +963,7 @@ Check browser console for full analysis.`
           <div className="flex gap-2">
             <Link
               href="/clients/new"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Add Client
@@ -970,7 +971,7 @@ Check browser console for full analysis.`
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={importing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 flex items-center gap-2 disabled:opacity-50"
             >
               <Upload className="w-5 h-5" />
               Import CSV
@@ -978,7 +979,7 @@ Check browser console for full analysis.`
             <button
               onClick={() => multiSheetInputRef.current?.click()}
               disabled={importing}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 flex items-center gap-2 disabled:opacity-50"
               title="Import Excel where each tab/sheet is a different client"
             >
               <FileSpreadsheet className="w-5 h-5" />
@@ -987,7 +988,7 @@ Check browser console for full analysis.`
             <button
               onClick={() => excelInputRef.current?.click()}
               disabled={importing}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 flex items-center gap-2 disabled:opacity-50"
               title="Import Excel where clients are rows in a single sheet"
             >
               <FileSpreadsheet className="w-5 h-5" />
@@ -996,7 +997,7 @@ Check browser console for full analysis.`
             <button
               onClick={() => analyzeInputRef.current?.click()}
               disabled={importing}
-              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500 flex items-center gap-2 disabled:opacity-50"
               title="Analyze your Excel file to see its structure"
             >
               <AlertCircle className="w-5 h-5" />
@@ -1005,7 +1006,7 @@ Check browser console for full analysis.`
             <button
               onClick={exportCSV}
               disabled={clients.length === 0}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 flex items-center gap-2 disabled:opacity-50"
             >
               <Download className="w-5 h-5" />
               Export
@@ -1058,20 +1059,20 @@ Check browser console for full analysis.`
         />
 
         {selectedClients.size > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+          <div className="mb-4 p-3 bg-blue-900/30 rounded-lg flex items-center justify-between border border-blue-800">
             <span className="text-blue-700">
               {selectedClients.size} client{selectedClients.size === 1 ? '' : 's'} selected
             </span>
             <div className="flex gap-2">
               <button
                 onClick={clearSelection}
-                className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded"
+                className="px-3 py-1 text-blue-400 hover:bg-blue-800/50 rounded"
               >
                 Clear Selection
               </button>
               <button
                 onClick={deleteSelected}
-                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-500"
               >
                 Delete Selected
               </button>
@@ -1098,7 +1099,7 @@ Check browser console for full analysis.`
           )}
 
           {filteredClients.map(client => (
-            <div key={client.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <div key={client.id} className="flex items-center gap-4 p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
               <input
                 type="checkbox"
                 checked={selectedClients.has(client.id)}
@@ -1108,8 +1109,8 @@ Check browser console for full analysis.`
               <div className="flex-1">
                 <Link href={`/clients/${client.id}`} className="hover:text-purple-600">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <h3 className="font-semibold">{client.full_name}</h3>
+                    <User className="w-4 h-4 text-gray-500" />
+                    <h3 className="font-semibold text-gray-100">{client.full_name}</h3>
                   </div>
                   {(client.email || client.phone) && (
                     <p className="text-sm text-gray-600 mt-1">
@@ -1124,13 +1125,13 @@ Check browser console for full analysis.`
               <div className="flex gap-2">
                 <Link
                   href={`/clients/${client.id}/edit`}
-                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                  className="p-2 text-blue-400 hover:bg-blue-900/50 rounded-lg"
                 >
                   <Edit className="w-4 h-4" />
                 </Link>
                 <button
                   onClick={() => deleteClient(client.id)}
-                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
+                  className="p-2 text-red-400 hover:bg-red-900/50 rounded-lg"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
