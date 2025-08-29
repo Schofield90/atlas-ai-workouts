@@ -243,58 +243,29 @@ export default function ClientsPage() {
     setImportStatus(null)
 
     try {
-      const XLSX = (await import('xlsx')).default
-      const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const data = XLSX.utils.sheet_to_json(worksheet)
-
-      if (data.length === 0) {
-        throw new Error('Excel file appears to be empty')
+      // Use server-side API for Excel processing
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch('/api/clients/import-simple', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to import file')
       }
-
-      const newClients: Partial<WorkoutClient>[] = []
-
-      for (const row of data) {
-        const rowData = row as any
-        const name = rowData['Name'] || rowData['Full Name'] || rowData['Client Name'] || ''
-        
-        if (!name) continue
-
-        const client: Partial<WorkoutClient> = {
-          full_name: name,
-          email: rowData['Email'] || rowData['Email Address'] || undefined,
-          phone: rowData['Phone'] || rowData['Phone Number'] || undefined,
-          goals: rowData['Goals'] || rowData['Fitness Goals'] || undefined,
-          injuries: rowData['Injuries'] || rowData['Medical History'] || undefined,
-          equipment: rowData['Equipment'] 
-            ? String(rowData['Equipment']).split(/[,;]/).map(e => e.trim())
-            : [],
-          notes: rowData['Notes'] || rowData['Comments'] || undefined,
-        }
-
-        newClients.push(client)
-      }
-
-      // Import to Supabase
-      let successCount = 0
-      for (const client of newClients) {
-        try {
-          await clientService.createClient(client)
-          successCount++
-        } catch (error) {
-          console.error('Error importing client:', client.full_name, error)
-        }
-      }
-
+      
       await loadClients()
       setImportStatus({ 
         type: 'success', 
-        message: `Successfully imported ${successCount} of ${newClients.length} clients to cloud storage` 
+        message: `Successfully imported ${result.imported} of ${result.total} clients to cloud storage` 
       })
     } catch (error: any) {
-      setImportStatus({ type: 'error', message: error.message })
+      console.error('Import error:', error)
+      setImportStatus({ type: 'error', message: error.message || 'Failed to import Excel file' })
     } finally {
       setImporting(false)
       if (excelInputRef.current) excelInputRef.current.value = ''
