@@ -243,6 +243,13 @@ export default function ClientsPage() {
     setImportStatus(null)
 
     try {
+      // Check file size client-side
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        throw new Error('File too large. Maximum size is 10MB')
+      }
+      
+      console.log('Uploading Excel file:', file.name, 'Size:', file.size)
+      
       // Use server-side API for Excel processing
       const formData = new FormData()
       formData.append('file', file)
@@ -251,6 +258,14 @@ export default function ClientsPage() {
         method: 'POST',
         body: formData
       })
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response:', text)
+        throw new Error('Server error: ' + text.substring(0, 100))
+      }
       
       const result = await response.json()
       
