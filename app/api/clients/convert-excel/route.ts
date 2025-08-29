@@ -3,25 +3,76 @@ import { createClient } from '@/lib/db/client-fixed'
 
 export const runtime = 'nodejs'
 
-// Simple CSV parser that always works
+// Robust CSV parser that handles various formats
 function parseCSV(text: string) {
-  const lines = text.split('\n').filter(line => line.trim())
+  // Try to detect delimiter (comma, semicolon, tab)
+  const firstLine = text.split('\n')[0] || ''
+  let delimiter = ','
+  if (firstLine.includes('\t')) delimiter = '\t'
+  else if (firstLine.includes(';')) delimiter = ';'
+  
+  // Split lines and filter empty ones
+  const lines = text.split(/\r?\n/).filter(line => line.trim())
   if (lines.length < 2) {
     return { headers: [], data: [] }
   }
   
+  // Function to parse a CSV line properly (handles quoted values)
+  function parseCSVLine(line: string, delim: string) {
+    const result = []
+    let current = ''
+    let inQuotes = false
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const nextChar = line[i + 1]
+      
+      if (char === '"' || char === "'") {
+        if (inQuotes && nextChar === char) {
+          // Escaped quote
+          current += char
+          i++
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes
+        }
+      } else if (char === delim && !inQuotes) {
+        // End of field
+        result.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    
+    // Add last field
+    result.push(current.trim())
+    
+    return result.map(v => v.replace(/^["']|["']$/g, '').trim())
+  }
+  
   // Parse headers
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''))
+  const headers = parseCSVLine(lines[0], delimiter)
+  console.log('CSV Headers found:', headers)
   
   // Parse data rows
   const data = []
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''))
+    const values = parseCSVLine(lines[i], delimiter)
+    
+    // Skip empty rows
+    if (values.every(v => !v)) continue
+    
     const row: any = {}
     headers.forEach((header, index) => {
       row[header] = values[index] || ''
     })
     data.push(row)
+  }
+  
+  console.log(`Parsed ${data.length} rows from CSV`)
+  if (data.length > 0) {
+    console.log('First row:', data[0])
   }
   
   return { headers, data }
@@ -126,13 +177,48 @@ export async function POST(request: NextRequest) {
       const { headers, data } = parseCSV(text)
       
       if (action === 'analyze') {
-        return NextResponse.json({
+        // Analyze the data to find potential issues
+        const analysis: any = {
           success: true,
           format: 'CSV',
           headers,
           rowCount: data.length,
-          sampleData: data.slice(0, 5)
-        })
+          sampleData: data.slice(0, 5),
+          issues: []
+        }
+        
+        // Check if we can find name columns
+        const hasNameColumn = headers.some(h => 
+          h.toLowerCase().includes('name') || 
+          h.toLowerCase() === 'client' || 
+          h.toLowerCase() === 'customer'
+        )
+        
+        if (!hasNameColumn) {
+          analysis.issues.push('No obvious name column found. Will use first non-empty column.')
+          if (headers.length > 0) {
+            analysis.issues.push(`Available columns: ${headers.join(', ')}`)
+          }
+        }
+        
+        // Check if data exists
+        if (data.length === 0) {
+          analysis.issues.push('No data rows found in CSV')
+        } else {
+          // Check how many rows have valid names
+          let validNames = 0
+          for (const row of data) {
+            const name = Object.values(row).find(v => v && String(v).trim() && !String(v).includes('@'))
+            if (name) validNames++
+          }
+          analysis.validNamesFound = validNames
+          
+          if (validNames === 0) {
+            analysis.issues.push('No valid names found in any rows')
+          }
+        }
+        
+        return NextResponse.json(analysis)
       }
       
       // Import to database
@@ -141,21 +227,76 @@ export async function POST(request: NextRequest) {
         const results = []
         
         for (const row of data) {
-          // Find name field - be very flexible
-          let name = row['Name'] || row['Full Name'] || row['Client Name'] || 
-                    row['First Name'] || row['Customer'] || 
-                    Object.values(row).find(v => v && String(v).trim() && !String(v).includes('@'))
+          // Find name field - check all possible variations
+          const nameVariations = ['Name', 'Full Name', 'Client Name', 'First Name', 'Customer', 'Member', 'Person']
+          let name = null
           
-          if (!name || !String(name).trim()) continue
+          // Try exact matches first
+          for (const variation of nameVariations) {
+            if (row[variation] && String(row[variation]).trim()) {
+              name = row[variation]
+              break
+            }
+          }
+          
+          // Try case-insensitive matches
+          if (!name) {
+            const rowKeys = Object.keys(row)
+            for (const key of rowKeys) {
+              const keyLower = key.toLowerCase()
+              if (keyLower.includes('name') || keyLower === 'client' || keyLower === 'customer' || keyLower === 'member') {
+                if (row[key] && String(row[key]).trim()) {
+                  name = row[key]
+                  break
+                }
+              }
+            }
+          }
+          
+          // Last resort - use first non-empty column that doesn't look like an email
+          if (!name) {
+            const firstValue = Object.values(row).find(v => 
+              v && String(v).trim() && 
+              !String(v).includes('@') && 
+              !String(v).match(/^\d+$/) // Not just numbers
+            )
+            if (firstValue) {
+              name = firstValue
+              console.log('Using first non-empty column as name:', name)
+            }
+          }
+          
+          if (!name || !String(name).trim()) {
+            console.log('Skipping row - no name found:', row)
+            continue
+          }
+          
+          // Find other fields with flexible matching
+          const findField = (variations: string[]) => {
+            for (const variation of variations) {
+              if (row[variation]) return row[variation]
+            }
+            // Case-insensitive fallback
+            const rowKeys = Object.keys(row)
+            for (const key of rowKeys) {
+              const keyLower = key.toLowerCase()
+              for (const variation of variations) {
+                if (keyLower.includes(variation.toLowerCase())) {
+                  return row[key]
+                }
+              }
+            }
+            return null
+          }
           
           const client = {
             full_name: String(name).trim(),
-            email: row['Email'] || row['Email Address'] || null,
-            phone: row['Phone'] || row['Phone Number'] || row['Mobile'] || null,
-            goals: row['Goals'] || row['Fitness Goals'] || null,
-            injuries: row['Injuries'] || row['Medical'] || null,
+            email: findField(['Email', 'Email Address', 'E-mail', 'Mail']) || null,
+            phone: findField(['Phone', 'Phone Number', 'Mobile', 'Cell', 'Tel']) || null,
+            goals: findField(['Goals', 'Fitness Goals', 'Goal', 'Objective']) || null,
+            injuries: findField(['Injuries', 'Medical', 'Health', 'Condition']) || null,
             equipment: row['Equipment'] ? String(row['Equipment']).split(/[,;]/).filter(Boolean) : [],
-            notes: row['Notes'] || row['Comments'] || null,
+            notes: findField(['Notes', 'Comments', 'Note', 'Additional']) || null,
             user_id: 'default-user'
           }
           

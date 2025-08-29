@@ -46,6 +46,7 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
   const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const multiSheetInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadClients()
@@ -452,6 +453,44 @@ export default function ClientsPage() {
     })
   }
   
+  async function importMultiSheetExcel(file: File) {
+    setImporting(true)
+    setImportStatus(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetch('/api/clients/import-multi-sheet', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || result.suggestion || 'Failed to import multi-sheet file')
+      }
+      
+      await loadClients()
+      
+      let message = `Successfully imported ${result.imported} clients from ${result.total} sheets`
+      if (result.errors && result.errors.length > 0) {
+        message += `\n\nSome sheets had errors:\n${result.errors.map((e: any) => `- ${e.sheet || e.client}: ${e.error}`).join('\n')}`
+      }
+      
+      setImportStatus({ 
+        type: result.imported > 0 ? 'success' : 'error', 
+        message 
+      })
+    } catch (error: any) {
+      setImportStatus({ type: 'error', message: error.message })
+    } finally {
+      setImporting(false)
+      if (multiSheetInputRef.current) multiSheetInputRef.current.value = ''
+    }
+  }
+  
   async function analyzeExcel(file: File) {
     setImporting(true)
     setImportStatus(null)
@@ -615,9 +654,19 @@ Check browser console for full analysis.`
               Import CSV
             </button>
             <button
+              onClick={() => multiSheetInputRef.current?.click()}
+              disabled={importing}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50"
+              title="Import Excel where each tab/sheet is a different client"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Import Multi-Tab
+            </button>
+            <button
               onClick={() => excelInputRef.current?.click()}
               disabled={importing}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+              title="Import Excel where clients are rows in a single sheet"
             >
               <FileSpreadsheet className="w-5 h-5" />
               Import Excel
@@ -672,6 +721,17 @@ Check browser console for full analysis.`
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file) analyzeExcel(file)
+          }}
+        />
+        
+        <input
+          ref={multiSheetInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) importMultiSheetExcel(file)
           }}
         />
 
