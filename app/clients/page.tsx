@@ -50,22 +50,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadClients()
-    // Clear localStorage on mount
-    clearLocalStorage()
   }, [])
-
-  async function clearLocalStorage() {
-    try {
-      // Clear all workout-related localStorage
-      localStorage.removeItem('ai-workout-clients')
-      localStorage.removeItem('ai-workout-sessions')
-      localStorage.removeItem('ai-workout-workouts')
-      localStorage.removeItem('selected-client')
-      console.log('✅ LocalStorage cleared - now using Supabase cloud storage')
-    } catch (e) {
-      console.log('LocalStorage not available')
-    }
-  }
 
   async function loadClients() {
     setLoading(true)
