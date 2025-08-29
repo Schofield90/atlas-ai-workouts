@@ -3,25 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, User } from 'lucide-react'
-
-interface Client {
-  id: string
-  full_name: string
-  email?: string
-  phone?: string
-  goals?: string
-  injuries?: string
-  equipment?: string
-  notes?: string
-  created_at: string
-}
+import { clientService } from '@/lib/services/workout-data'
+import type { WorkoutClient } from '@/lib/services/workout-data'
 
 export default function EditClientPage() {
   const params = useParams()
   const router = useRouter()
   const clientId = params.id as string
   
-  const [client, setClient] = useState<Client | null>(null)
+  const [client, setClient] = useState<WorkoutClient | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -29,11 +19,9 @@ export default function EditClientPage() {
     loadClient()
   }, [clientId])
 
-  function loadClient() {
+  async function loadClient() {
     try {
-      const saved = localStorage.getItem('ai-workout-clients')
-      const clients = saved ? JSON.parse(saved) : []
-      const foundClient = clients.find((c: Client) => c.id === clientId)
+      const foundClient = await clientService.getClient(clientId)
       
       if (foundClient) {
         setClient(foundClient)
@@ -46,19 +34,23 @@ export default function EditClientPage() {
     }
   }
 
-  function saveClient() {
+  async function saveClient() {
     if (!client) return
     
     setSaving(true)
     
     try {
-      const saved = localStorage.getItem('ai-workout-clients')
-      const clients = saved ? JSON.parse(saved) : []
-      const updatedClients = clients.map((c: Client) => 
-        c.id === clientId ? client : c
-      )
+      await clientService.updateClient(clientId, {
+        full_name: client.full_name,
+        email: client.email,
+        phone: client.phone,
+        goals: client.goals,
+        injuries: client.injuries,
+        equipment: client.equipment,
+        notes: client.notes
+      })
       
-      localStorage.setItem('ai-workout-clients', JSON.stringify(updatedClients))
+      console.log('✅ Client updated in Supabase cloud storage')
       
       // Navigate back to clients page
       router.push('/clients')

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Target, AlertCircle, Dumbbell, Save } from 'lucide-react'
+import { clientService } from '@/lib/services/workout-data'
 
 const EQUIPMENT_OPTIONS = [
   'Barbell', 'Dumbbells', 'Kettlebells', 'Pull-up Bar', 'Resistance Bands',
@@ -38,7 +39,7 @@ export default function NewClientPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.full_name) {
@@ -50,31 +51,27 @@ export default function NewClientPage() {
     setError('')
 
     try {
-      // Create client with unique ID
-      const client = {
-        id: `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      // Create client data for Supabase
+      const clientData = {
         full_name: formData.full_name,
-        email: formData.email || null,
-        age: formData.age ? parseInt(formData.age) : null,
-        sex: formData.sex || null,
-        height_cm: formData.height_cm ? parseInt(formData.height_cm) : null,
-        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
-        goals: formData.goals || null,
-        injuries: formData.injuries || null,
+        email: formData.email || undefined,
+        age: formData.age ? parseInt(formData.age) : undefined,
+        sex: formData.sex || undefined,
+        height_cm: formData.height_cm ? parseInt(formData.height_cm) : undefined,
+        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : undefined,
+        goals: formData.goals || undefined,
+        injuries: formData.injuries || undefined,
         equipment: formData.equipment,
         preferences: {},
-        notes: formData.notes,
-        created_at: new Date().toISOString()
+        notes: formData.notes || undefined
       }
 
-      // Save to localStorage
-      const saved = localStorage.getItem('ai-workout-clients')
-      const existingClients = saved ? JSON.parse(saved) : []
-      existingClients.push(client)
-      localStorage.setItem('ai-workout-clients', JSON.stringify(existingClients))
+      // Save to Supabase
+      await clientService.createClient(clientData)
+      console.log('✅ Client saved to Supabase cloud storage')
 
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Redirect to clients page
+      router.push('/clients')
     } catch (err: any) {
       console.error('Failed to create client:', err)
       setError(err.message || 'Failed to create client')

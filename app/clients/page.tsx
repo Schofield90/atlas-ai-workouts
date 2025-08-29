@@ -12,23 +12,15 @@ import {
   FileSpreadsheet,
   CheckCircle,
   AlertCircle,
-  User
+  User,
+  Loader2
 } from 'lucide-react'
-
-interface Client {
-  id: string
-  full_name: string
-  email?: string
-  phone?: string
-  goals?: string
-  injuries?: string
-  equipment?: string
-  notes?: string
-  created_at: string
-}
+import { clientService } from '@/lib/services/workout-data'
+import type { WorkoutClient } from '@/lib/services/workout-data'
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<WorkoutClient[]>([])
+  const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -38,25 +30,44 @@ export default function ClientsPage() {
 
   useEffect(() => {
     loadClients()
+    // Clear localStorage on mount
+    clearLocalStorage()
   }, [])
 
-  function loadClients() {
-    const saved = localStorage.getItem('ai-workout-clients')
-    if (saved) {
-      setClients(JSON.parse(saved))
+  async function clearLocalStorage() {
+    // Clear all workout-related localStorage
+    localStorage.removeItem('ai-workout-clients')
+    localStorage.removeItem('ai-workout-sessions')
+    localStorage.removeItem('ai-workout-workouts')
+    localStorage.removeItem('selected-client')
+    console.log('✅ LocalStorage cleared - now using Supabase cloud storage')
+  }
+
+  async function loadClients() {
+    setLoading(true)
+    try {
+      const cloudClients = await clientService.getClients()
+      setClients(cloudClients)
+      console.log(`✅ Loaded ${cloudClients.length} clients from Supabase`)
+    } catch (error) {
+      console.error('Error loading clients:', error)
+      setImportStatus({ type: 'error', message: 'Failed to load clients from cloud' })
+    } finally {
+      setLoading(false)
     }
   }
 
-  function saveClients(updatedClients: Client[]) {
-    localStorage.setItem('ai-workout-clients', JSON.stringify(updatedClients))
-    setClients(updatedClients)
-  }
-
-  function deleteClient(clientId: string) {
+  async function deleteClient(clientId: string) {
     if (!confirm('Are you sure you want to delete this client?')) return
     
-    const updated = clients.filter(c => c.id !== clientId)
-    saveClients(updated)
+    try {
+      await clientService.deleteClient(clientId)
+      await loadClients() // Reload to get updated list
+      setImportStatus({ type: 'success', message: 'Client deleted successfully' })
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      setImportStatus({ type: 'error', message: 'Failed to delete client' })
+    }
   }
 
   function toggleSelectClient(clientId: string) {
@@ -78,7 +89,7 @@ export default function ClientsPage() {
     setSelectedClients(new Set())
   }
 
-  function deleteSelected() {
+  async function deleteSelected() {
     if (selectedClients.size === 0) return
     
     const message = selectedClients.size === 1 
@@ -87,591 +98,407 @@ export default function ClientsPage() {
     
     if (!confirm(message)) return
     
-    const updated = clients.filter(c => !selectedClients.has(c.id))
-    saveClients(updated)
-    setSelectedClients(new Set())
+    try {
+      setLoading(true)
+      // Delete each selected client
+      for (const clientId of selectedClients) {
+        await clientService.deleteClient(clientId)
+      }
+      setSelectedClients(new Set())
+      await loadClients()
+      setImportStatus({ type: 'success', message: `Deleted ${selectedClients.size} clients` })
+    } catch (error) {
+      console.error('Error deleting clients:', error)
+      setImportStatus({ type: 'error', message: 'Failed to delete some clients' })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  function deleteTestClients() {
+  async function deleteTestClients() {
     const testClients = clients.filter(c => 
       c.full_name.match(/^(Client \d+|Test Client|Sample Client)$/i)
     )
     
     if (testClients.length === 0) {
-      alert('No test clients found to delete')
+      setImportStatus({ type: 'error', message: 'No test clients found' })
       return
     }
     
-    if (!confirm(`Delete ${testClients.length} test clients (Client 1, Client 2, etc.)?`)) return
+    const message = `Delete ${testClients.length} test client${testClients.length === 1 ? '' : 's'}?`
+    if (!confirm(message)) return
     
-    const updated = clients.filter(c => 
-      !c.full_name.match(/^(Client \d+|Test Client|Sample Client)$/i)
-    )
-    saveClients(updated)
+    try {
+      setLoading(true)
+      for (const client of testClients) {
+        await clientService.deleteClient(client.id)
+      }
+      await loadClients()
+      setImportStatus({ type: 'success', message: `Deleted ${testClients.length} test clients` })
+    } catch (error) {
+      console.error('Error deleting test clients:', error)
+      setImportStatus({ type: 'error', message: 'Failed to delete test clients' })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  async function handleExcelImport(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
+  async function importCSV(file: File) {
     setImporting(true)
     setImportStatus(null)
 
     try {
-      console.log(`Processing file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+      const text = await file.text()
+      const lines = text.split('\n').filter(line => line.trim())
       
-      // For all Excel files, process them client-side to avoid upload size limits
-      console.log('Processing Excel file locally...')
+      if (lines.length < 2) {
+        throw new Error('CSV file appears to be empty')
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      const nameIndex = headers.findIndex(h => h.includes('name'))
+      const emailIndex = headers.findIndex(h => h.includes('email'))
+      const phoneIndex = headers.findIndex(h => h.includes('phone'))
+      const goalsIndex = headers.findIndex(h => h.includes('goal'))
+      const injuriesIndex = headers.findIndex(h => h.includes('injur'))
+      const equipmentIndex = headers.findIndex(h => h.includes('equipment'))
+      const notesIndex = headers.findIndex(h => h.includes('note'))
+
+      if (nameIndex === -1) {
+        throw new Error('CSV must have a name column')
+      }
+
+      const newClients: Partial<WorkoutClient>[] = []
       
-      // Dynamically import XLSX library for client-side processing
-      const XLSX = await import('xlsx')
-      
-      // Read file as array buffer
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim())
+        if (!values[nameIndex]) continue
+
+        const client: Partial<WorkoutClient> = {
+          full_name: values[nameIndex],
+          email: emailIndex !== -1 ? values[emailIndex] : undefined,
+          phone: phoneIndex !== -1 ? values[phoneIndex] : undefined,
+          goals: goalsIndex !== -1 ? values[goalsIndex] : undefined,
+          injuries: injuriesIndex !== -1 ? values[injuriesIndex] : undefined,
+          equipment: equipmentIndex !== -1 && values[equipmentIndex] 
+            ? values[equipmentIndex].split(';').map(e => e.trim())
+            : [],
+          notes: notesIndex !== -1 ? values[notesIndex] : undefined,
+        }
+
+        newClients.push(client)
+      }
+
+      // Import to Supabase
+      let successCount = 0
+      for (const client of newClients) {
+        try {
+          await clientService.createClient(client)
+          successCount++
+        } catch (error) {
+          console.error('Error importing client:', client.full_name, error)
+        }
+      }
+
+      await loadClients()
+      setImportStatus({ 
+        type: 'success', 
+        message: `Successfully imported ${successCount} of ${newClients.length} clients to cloud storage` 
+      })
+    } catch (error: any) {
+      setImportStatus({ type: 'error', message: error.message })
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function importExcel(file: File) {
+    setImporting(true)
+    setImportStatus(null)
+
+    try {
+      const XLSX = (await import('xlsx')).default
       const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-      
-      console.log(`Found ${workbook.SheetNames.length} sheets in workbook`)
-      
-      const clientsData = []
-      const skippedSheets = []
-      
-      // Process each sheet as a client
-      for (const sheetName of workbook.SheetNames) {
-        // Skip master/template sheets
-        if (sheetName.toLowerCase().includes('master') || 
-            sheetName.toLowerCase().includes('copy') ||
-            sheetName.toLowerCase().includes('template')) {
-          skippedSheets.push(sheetName)
-          continue
+      const workbook = XLSX.read(arrayBuffer)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const data = XLSX.utils.sheet_to_json(worksheet)
+
+      if (data.length === 0) {
+        throw new Error('Excel file appears to be empty')
+      }
+
+      const newClients: Partial<WorkoutClient>[] = []
+
+      for (const row of data) {
+        const rowData = row as any
+        const name = rowData['Name'] || rowData['Full Name'] || rowData['Client Name'] || ''
+        
+        if (!name) continue
+
+        const client: Partial<WorkoutClient> = {
+          full_name: name,
+          email: rowData['Email'] || rowData['Email Address'] || undefined,
+          phone: rowData['Phone'] || rowData['Phone Number'] || undefined,
+          goals: rowData['Goals'] || rowData['Fitness Goals'] || undefined,
+          injuries: rowData['Injuries'] || rowData['Medical History'] || undefined,
+          equipment: rowData['Equipment'] 
+            ? String(rowData['Equipment']).split(/[,;]/).map(e => e.trim())
+            : [],
+          notes: rowData['Notes'] || rowData['Comments'] || undefined,
         }
-        
-        const sheet = workbook.Sheets[sheetName]
-        const data = XLSX.utils.sheet_to_json(sheet, { 
-          header: 1,
-          defval: '',
-          blankrows: false 
-        }) as any[][]
-        
-        if (!data || data.length === 0) {
-          continue
-        }
-        
-        // Extract client information from specific cells
-        const injuries = data[0]?.[0]?.toString() || '' // A1
-        const goals = data[0]?.[2]?.toString() || '' // C1
-        const membership = data[0]?.[3]?.toString() || '' // D1
-        const additionalInfo = data[0]?.[4]?.toString() || '' // E1
-        
-        // Extract workout history (first 5 workouts only to reduce size)
-        const workoutHistory = []
-        for (let i = 1; i < Math.min(data.length, 6); i++) {
-          const row = data[i]
-          if (row && row[0]) {
-            const date = row[0]
-            const workout = row[1]
-            if (date && workout) {
-              workoutHistory.push(`${date}: ${workout}`)
-            }
-          }
-        }
-        
-        // Clean up the extracted data
-        const cleanedInjuries = injuries.replace(/injuries?:?/gi, '').trim()
-        const cleanedGoals = goals.replace(/goals?:?/gi, '').trim()
-        
-        // Build notes from workout history
-        let notes = ''
-        if (membership) {
-          notes += `Membership: ${membership}\n`
-        }
-        if (additionalInfo) {
-          notes += `${additionalInfo}\n`
-        }
-        if (workoutHistory.length > 0) {
-          notes += `\nRecent Workouts:\n${workoutHistory.join('\n')}`
-        }
-        
-        const clientData = {
-          full_name: sheetName.trim(),
-          goals: cleanedGoals,
-          injuries: cleanedInjuries,
-          notes: notes.trim()
-        }
-        
-        // Only add if we have a valid name
-        if (clientData.full_name && !clientData.full_name.toLowerCase().includes('sheet')) {
-          clientsData.push(clientData)
+
+        newClients.push(client)
+      }
+
+      // Import to Supabase
+      let successCount = 0
+      for (const client of newClients) {
+        try {
+          await clientService.createClient(client)
+          successCount++
+        } catch (error) {
+          console.error('Error importing client:', client.full_name, error)
         }
       }
-      
-      console.log(`Extracted ${clientsData.length} clients from Excel`)
-      
-      if (clientsData.length === 0) {
-        throw new Error(`No valid client sheets found. Processed ${workbook.SheetNames.length} sheets, skipped: ${skippedSheets.join(', ')}`)
-      }
-      
-      // Send only the extracted data to the server
-      const response = await fetch('/api/clients/import-processed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clients: clientsData,
-          debug: {
-            totalSheets: workbook.SheetNames.length,
-            processedClients: clientsData.length,
-            skippedSheets: skippedSheets,
-            sheetNames: workbook.SheetNames
-          }
-        })
-      })
-      
-      const contentType = response.headers.get('content-type')
-      
-      if (!response.ok) {
-        if (contentType?.includes('application/json')) {
-          const error = await response.json()
-          throw new Error(error.error || error.details || 'Failed to import clients')
-        } else {
-          const text = await response.text()
-          console.error('Non-JSON response:', text.substring(0, 200))
-          throw new Error(`Server error: ${response.status} ${response.statusText}`)
-        }
-      }
-      
-      const data = await response.json()
-      
-      // Show debug info
-      if (data.debug) {
-        console.log('Excel Import Debug:', data.debug)
-      }
-      
-      // Merge imported clients
-      const existingIds = new Set(clients.map(c => c.full_name))
-      const newClients = data.clients.filter((c: Client) => 
-        !existingIds.has(c.full_name)
-      )
-      
-      const updated = [...clients, ...newClients]
-      saveClients(updated)
-      
+
+      await loadClients()
       setImportStatus({ 
         type: 'success', 
-        message: `Imported ${newClients.length} clients from ${data.debug?.processedClients || 0} Excel sheets` 
+        message: `Successfully imported ${successCount} of ${newClients.length} clients to cloud storage` 
       })
-    } catch (error) {
-      console.error('Excel import error:', error)
-      setImportStatus({ 
-        type: 'error', 
-        message: error instanceof Error ? error.message : 'Failed to import Excel file' 
-      })
+    } catch (error: any) {
+      setImportStatus({ type: 'error', message: error.message })
     } finally {
       setImporting(false)
-      if (excelInputRef.current) {
-        excelInputRef.current.value = ''
-      }
+      if (excelInputRef.current) excelInputRef.current.value = ''
     }
   }
 
-  async function handleCSVImport(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setImporting(true)
-    setImportStatus(null)
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch('/api/clients/import', {
-        method: 'POST',
-        body: formData
-      })
-
-      const contentType = response.headers.get('content-type')
-      
-      if (!response.ok) {
-        if (contentType?.includes('application/json')) {
-          const error = await response.json()
-          throw new Error(error.error || error.details || 'Failed to import clients')
-        } else {
-          const text = await response.text()
-          console.error('Non-JSON response:', text.substring(0, 200))
-          throw new Error(`Server error: ${response.status} ${response.statusText}`)
-        }
-      }
-
-      if (!contentType?.includes('application/json')) {
-        const text = await response.text()
-        console.error('Expected JSON but got:', text.substring(0, 200))
-        throw new Error('Server returned non-JSON response')
-      }
-
-      const data = await response.json()
-      
-      // Show debug info if available
-      if (data.debug) {
-        console.log('Import Debug Info:', data.debug)
-        if (data.debug.sampleColumns.length > 0) {
-          console.log('CSV Columns found:', data.debug.sampleColumns.join(', '))
-        }
-        if (data.debug.sampleRecord) {
-          console.log('Sample record:', data.debug.sampleRecord)
-        }
-      }
-      
-      // Merge imported clients with existing ones
-      const existingIds = new Set(clients.map(c => c.email || c.full_name))
-      const newClients = data.clients.filter((c: Client) => 
-        !existingIds.has(c.email || c.full_name)
+  function exportCSV() {
+    const csv = [
+      'Name,Email,Phone,Goals,Injuries,Equipment,Notes',
+      ...clients.map(c => 
+        `"${c.full_name}","${c.email || ''}","${c.phone || ''}","${c.goals || ''}","${c.injuries || ''}","${(c.equipment || []).join(';')}","${c.notes || ''}"`
       )
-      
-      const updated = [...clients, ...newClients]
-      saveClients(updated)
-      
-      let statusMessage = `Successfully imported ${newClients.length} new clients`
-      if (data.clients.length - newClients.length > 0) {
-        statusMessage += ` (${data.clients.length - newClients.length} duplicates skipped)`
-      }
-      if (data.debug && data.debug.sampleColumns.length > 0) {
-        statusMessage += `. CSV columns detected: ${data.debug.sampleColumns.join(', ')}`
-      }
-      
-      setImportStatus({ 
-        type: 'success', 
-        message: statusMessage
-      })
-    } catch (error) {
-      console.error('Import error:', error)
-      setImportStatus({ 
-        type: 'error', 
-        message: 'Failed to import clients. Make sure the CSV has the correct format.' 
-      })
-    } finally {
-      setImporting(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    }
-  }
+    ].join('\n')
 
-  function exportClients() {
-    const csvContent = [
-      ['Name', 'Email', 'Phone', 'Goals', 'Injuries', 'Equipment', 'Notes'],
-      ...clients.map(c => [
-        c.full_name,
-        c.email || '',
-        c.phone || '',
-        c.goals || '',
-        c.injuries || '',
-        c.equipment || '',
-        c.notes || ''
-      ])
-    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'clients.csv'
+    a.download = `clients-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  function downloadTemplate() {
-    const templateContent = [
-      ['Name', 'Email', 'Phone', 'Goals', 'Injuries', 'Equipment', 'Notes'],
-      ['John Doe', 'john@example.com', '+1234567890', 'Build muscle, lose fat', 'Lower back pain', 'Dumbbells, barbell, pull-up bar', 'Prefers morning workouts'],
-      ['Jane Smith', 'jane@example.com', '+0987654321', 'Improve cardio endurance', 'None', 'Full gym access', 'Training for marathon']
-    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
-
-    const blob = new Blob([templateContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'client-import-template.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const filteredClients = clients.filter(client => 
+  const filteredClients = clients.filter(client =>
     client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.goals?.toLowerCase().includes(searchTerm.toLowerCase())
+    client.phone?.includes(searchTerm)
   )
 
+  if (loading && clients.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+          <span className="ml-2">Loading clients from cloud...</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <a href="/dashboard" className="text-gray-500 hover:text-gray-700 mr-4">
-                ← Back
-              </a>
-              <h1 className="text-xl font-semibold flex items-center">
-                <Users className="h-5 w-5 mr-2" />
-                Client Management
-              </h1>
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-8 rounded-xl mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="w-8 h-8" />
+              <h1 className="text-3xl font-bold">Clients (Cloud Storage)</h1>
             </div>
-            <div className="flex items-center space-x-2">
-              {selectedClients.size > 0 && (
-                <>
-                  <button
-                    onClick={clearSelection}
-                    className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
-                  >
-                    Clear ({selectedClients.size})
-                  </button>
-                  <button
-                    onClick={deleteSelected}
-                    className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    <Trash2 className="h-4 w-4 inline mr-1" />
-                    Delete
-                  </button>
-                </>
-              )}
-              <button
-                onClick={deleteTestClients}
-                className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
-                title="Delete all clients named 'Client 1', 'Client 2', etc."
-              >
-                <Trash2 className="h-4 w-4 inline mr-1" />
-                Clear Test
-              </button>
-              <button
-                onClick={downloadTemplate}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
-              >
-                <FileSpreadsheet className="h-4 w-4 inline mr-1" />
-                Template
-              </button>
-              <button
-                onClick={exportClients}
-                disabled={clients.length === 0}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Download className="h-4 w-4 inline mr-1" />
-                Export
-              </button>
-              <Link
-                href="/clients/new"
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 inline mr-1" />
-                Add Client
-              </Link>
-            </div>
+            <p className="text-purple-100">
+              Manage your client database - All data saved to Supabase cloud
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-4xl font-bold">{clients.length}</div>
+            <div className="text-purple-200">Total Clients</div>
           </div>
         </div>
-      </nav>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Import Section */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Import Clients</h2>
-            
-            {/* Excel Import */}
-            <div className="border-2 border-dashed border-green-300 rounded-lg p-6 mb-4 bg-green-50">
-              <input
-                ref={excelInputRef}
-                type="file"
-                onChange={handleExcelImport}
-                accept=".xlsx,.xls"
-                className="hidden"
-              />
-              <FileSpreadsheet className="h-12 w-12 text-green-600 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-700 mb-2">
-                Import from Excel (Your Format)
-              </p>
-              <p className="text-xs text-gray-600 mb-4">
-                Upload your Excel file with individual client sheets
-                <br />
-                <span className="text-gray-500">
-                  Each sheet tab = 1 client, with injuries in A1, goals in C1
-                </span>
-              </p>
-              <button
-                onClick={() => excelInputRef.current?.click()}
-                disabled={importing}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
-              >
-                {importing ? 'Importing...' : 'Choose Excel File (.xlsx)'}
-              </button>
-            </div>
+      {importStatus && (
+        <div className={`mb-4 p-4 rounded-lg flex items-center gap-2 ${
+          importStatus.type === 'success' 
+            ? 'bg-green-50 text-green-800' 
+            : 'bg-red-50 text-red-800'
+        }`}>
+          {importStatus.type === 'success' ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <AlertCircle className="w-5 h-5" />
+          )}
+          {importStatus.message}
+        </div>
+      )}
 
-            {/* CSV Import */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <input
-                ref={fileInputRef}
-                type="file"
-                onChange={handleCSVImport}
-                accept=".csv"
-                className="hidden"
-              />
-              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 mb-2">
-                Or upload a standard CSV file
-              </p>
-              <p className="text-xs text-gray-500 mb-4">
-                CSV should have columns: Name, Email, Phone, Goals, Injuries, Equipment, Notes
-                <br />
-                <span className="text-gray-400">
-                  (We'll try to detect your column names automatically)
-                </span>
-              </p>
-              <div className="flex justify-center space-x-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={importing}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {importing ? 'Importing...' : 'Choose CSV File'}
-                </button>
-                <button
-                  onClick={downloadTemplate}
-                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Download Template
-                </button>
-              </div>
-            </div>
-
-            {importStatus && (
-              <div className={`mt-4 p-3 rounded flex items-center ${
-                importStatus.type === 'success' 
-                  ? 'bg-green-50 text-green-700' 
-                  : 'bg-red-50 text-red-700'
-              }`}>
-                {importStatus.type === 'success' 
-                  ? <CheckCircle className="h-4 w-4 mr-2" />
-                  : <AlertCircle className="h-4 w-4 mr-2" />
-                }
-                {importStatus.message}
-              </div>
-            )}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          <input
+            type="text"
+            placeholder="Search clients..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          />
+          <div className="flex gap-2">
+            <Link
+              href="/clients/new"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Add Client
+            </Link>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              <Upload className="w-5 h-5" />
+              Import CSV
+            </button>
+            <button
+              onClick={() => excelInputRef.current?.click()}
+              disabled={importing}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Import Excel
+            </button>
+            <button
+              onClick={exportCSV}
+              disabled={clients.length === 0}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 disabled:opacity-50"
+            >
+              <Download className="w-5 h-5" />
+              Export
+            </button>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4">
-            <input
-              type="text"
-              placeholder="Search clients by name, email, or goals..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) importCSV(file)
+          }}
+        />
 
-        {/* Clients List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b flex justify-between items-center">
-            <h2 className="text-lg font-semibold">
-              Clients ({filteredClients.length})
-            </h2>
-            {filteredClients.length > 0 && (
+        <input
+          ref={excelInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) importExcel(file)
+          }}
+        />
+
+        {selectedClients.size > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+            <span className="text-blue-700">
+              {selectedClients.size} client{selectedClients.size === 1 ? '' : 's'} selected
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={clearSelection}
+                className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded"
+              >
+                Clear Selection
+              </button>
+              <button
+                onClick={deleteSelected}
+                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Delete Selected
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {filteredClients.length > 0 && (
+            <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
               <button
                 onClick={selectAllVisible}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="hover:text-purple-600"
               >
-                Select All
+                Select All ({filteredClients.length})
               </button>
-            )}
-          </div>
-          
-          {filteredClients.length > 0 ? (
-            <div className="divide-y">
-              {filteredClients.map((client) => (
-                <div key={client.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedClients.has(client.id)}
-                        onChange={() => toggleSelectClient(client.id)}
-                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <div className="bg-blue-100 rounded-full p-2">
-                        <User className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{client.full_name}</h3>
-                        {client.email && (
-                          <p className="text-sm text-gray-500">{client.email}</p>
-                        )}
-                        {client.phone && (
-                          <p className="text-sm text-gray-500">{client.phone}</p>
-                        )}
-                        {client.goals && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            <span className="font-medium">Goals:</span> {client.goals}
-                          </p>
-                        )}
-                        {client.injuries && (
-                          <p className="text-sm text-orange-600 mt-1">
-                            <span className="font-medium">Injuries:</span> {client.injuries}
-                          </p>
-                        )}
-                        {client.equipment && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            <span className="font-medium">Equipment:</span> {client.equipment}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-2">
-                          Added {new Date(client.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Link
-                        href={`/clients/${client.id}/edit`}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                      <button
-                        onClick={() => deleteClient(client.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <button
+                onClick={deleteTestClients}
+                className="text-red-600 hover:text-red-700"
+              >
+                Delete Test Clients
+              </button>
             </div>
-          ) : (
-            <div className="p-12 text-center">
-              <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">
-                {searchTerm ? 'No clients found matching your search' : 'No clients added yet'}
-              </p>
-              <div className="space-y-2">
-                <Link
-                  href="/clients/new"
-                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Add Your First Client
+          )}
+
+          {filteredClients.map(client => (
+            <div key={client.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={selectedClients.has(client.id)}
+                onChange={() => toggleSelectClient(client.id)}
+                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+              />
+              <div className="flex-1">
+                <Link href={`/clients/${client.id}`} className="hover:text-purple-600">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-400" />
+                    <h3 className="font-semibold">{client.full_name}</h3>
+                  </div>
+                  {(client.email || client.phone) && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      {client.email} {client.email && client.phone && '•'} {client.phone}
+                    </p>
+                  )}
+                  {client.goals && (
+                    <p className="text-sm text-gray-500 mt-1">Goals: {client.goals}</p>
+                  )}
                 </Link>
-                <p className="text-sm text-gray-500">or</p>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-blue-600 hover:text-blue-700"
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href={`/clients/${client.id}/edit`}
+                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
                 >
-                  Import from CSV
+                  <Edit className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={() => deleteClient(client.id)}
+                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+          ))}
+
+          {filteredClients.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              {searchTerm ? 'No clients found matching your search' : 'No clients yet. Add your first client to get started!'}
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }
