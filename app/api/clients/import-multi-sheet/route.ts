@@ -264,15 +264,13 @@ async function processChunkedRequest(request: NextRequest, chunkIndex: number, t
     const results = []
     const errors = []
     
-    // Process clients in smaller batches
-    const batchSize = 5
-    
-    for (let i = 0; i < clients.length; i += batchSize) {
-      const batch = clients.slice(i, i + batchSize)
+    // Process clients one by one for better error handling
+    for (let i = 0; i < clients.length; i++) {
+      const client = clients[i]
       
       try {
-        // Prepare clients with default values
-        const preparedBatch = batch.map((client: any) => ({
+        // Prepare client with default values
+        const preparedClient = {
           full_name: client.full_name || client.name || 'Unknown',
           email: client.email || null,
           phone: client.phone || null,
@@ -281,26 +279,39 @@ async function processChunkedRequest(request: NextRequest, chunkIndex: number, t
           equipment: Array.isArray(client.equipment) ? client.equipment : [],
           notes: client.notes || `Imported from sheet: ${client.sheetName || 'Unknown'}`,
           user_id: 'default-user'
-        }))
+        }
         
-        const { data: newClients, error } = await supabase
+        console.log(`Inserting client ${i + 1}/${clients.length}: ${preparedClient.full_name}`)
+        
+        const { data: newClient, error } = await supabase
           .from('workout_clients')
-          .insert(preparedBatch)
+          .insert(preparedClient)
           .select()
+          .single()
         
-        if (!error && newClients) {
-          results.push(...newClients)
+        if (!error && newClient) {
+          results.push(newClient)
+          console.log(`✓ Successfully inserted: ${newClient.full_name}`)
         } else if (error) {
-          console.error(`Batch error:`, error)
-          errors.push({ batch: i/batchSize + 1, error: error.message })
+          console.error(`✗ Failed to insert ${preparedClient.full_name}:`, error)
+          errors.push({ 
+            client: preparedClient.full_name, 
+            error: error.message,
+            details: error.details || error.hint || ''
+          })
         }
       } catch (e: any) {
-        console.error(`Error inserting batch:`, e)
-        errors.push({ batch: i/batchSize + 1, error: e.message })
+        console.error(`Error processing client ${i + 1}:`, e)
+        errors.push({ 
+          client: client.full_name || client.name || `Client ${i + 1}`, 
+          error: e.message 
+        })
       }
       
-      // Small delay between batches
-      await new Promise(resolve => setTimeout(resolve, 50))
+      // Small delay between inserts to avoid rate limiting
+      if (i < clients.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
     }
     
     return NextResponse.json({
