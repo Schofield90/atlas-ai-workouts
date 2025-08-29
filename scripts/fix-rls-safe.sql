@@ -1,11 +1,14 @@
-#!/usr/bin/env node
+-- Safe RLS Fix Script
+-- This script checks which tables exist before trying to disable RLS
 
-console.log('🔧 RLS Fix Instructions for Excel Import\n');
-console.log('━'.repeat(80));
-console.log(`
-COPY THIS SQL AND RUN IN SUPABASE:
+-- First, check which workout tables exist
+SELECT tablename, rowsecurity 
+FROM pg_tables 
+WHERE schemaname = 'public' 
+AND tablename LIKE 'workout_%'
+ORDER BY tablename;
 
--- Safe RLS Fix - Only disables RLS on tables that exist
+-- Disable RLS only on tables that exist
 DO $$ 
 BEGIN
     -- Check and disable for each table if it exists
@@ -45,16 +48,14 @@ BEGIN
     END IF;
 END $$;
 
--- Verify RLS is disabled
-SELECT tablename, rowsecurity as "RLS Enabled"
+-- Verify RLS is now disabled on existing tables
+SELECT 
+    tablename AS "Table",
+    CASE 
+        WHEN rowsecurity = true THEN '❌ RLS Enabled'
+        ELSE '✅ RLS Disabled'
+    END AS "Status"
 FROM pg_tables 
 WHERE schemaname = 'public' 
 AND tablename LIKE 'workout_%'
 ORDER BY tablename;
-`);
-console.log('━'.repeat(80));
-console.log('\n📍 Go to: https://supabase.com/dashboard/project/lzlrojoaxrqvmhempnkn/sql/new');
-console.log('📋 Copy the SQL above');
-console.log('▶️  Click "Run" to execute\n');
-console.log('✅ This will only disable RLS on tables that exist, avoiding errors!');
-console.log('✅ After this, your Excel imports will work!');
