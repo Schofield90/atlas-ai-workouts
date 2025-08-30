@@ -42,7 +42,7 @@ export const simpleClientService = {
       console.log(`✅ Query successful: received ${data?.length || 0} clients`)
       
       // Clean any invalid UUIDs in the data
-      const cleanedData = (data || []).map(client => ({
+      const cleanedData = (data || []).map((client: any) => ({
         ...client,
         id: validateUUID(client.id)
       }))
