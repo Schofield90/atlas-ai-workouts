@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import WorkoutViewer from './workout-viewer'
+import { createClient } from '@/lib/db/client-fixed'
 
 export default function WorkoutPage({ 
   params 
@@ -12,38 +13,57 @@ export default function WorkoutPage({
   const { id } = use(params)
   const router = useRouter()
   const [workout, setWorkout] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    try {
-      // Load workout from localStorage
-      const saved = localStorage.getItem('ai-workout-workouts')
-      const workouts = saved ? JSON.parse(saved) : []
-      const validWorkouts = Array.isArray(workouts) ? workouts : []
-      const foundWorkout = validWorkouts.find((w: any) => w.id === id || w.workoutId === id)
-      
-      if (foundWorkout) {
+    async function loadWorkout() {
+      try {
+        setLoading(true)
+        // Load workout from Supabase
+        const supabase = createClient()
+        const { data: foundWorkout, error } = await supabase
+          .from('workout_sessions')
+          .select(`
+            *,
+            workout_clients (
+              id,
+              full_name,
+              email,
+              goals,
+              injuries
+            )
+          `)
+          .eq('id', id)
+          .single()
+        
+        if (error || !foundWorkout) {
+          console.error('Workout not found:', id, error)
+          router.push('/dashboard')
+          return
+        }
+        
         // Ensure workout has proper structure
         const formattedWorkout = {
           ...foundWorkout,
           plan: foundWorkout.plan || foundWorkout,
-          clients: foundWorkout.client || foundWorkout.clients || { full_name: 'Guest User' }
+          clients: foundWorkout.workout_clients || { full_name: 'Guest User' }
         }
         setWorkout(formattedWorkout)
-      } else {
-        // Redirect if workout not found
-        console.error('Workout not found:', id)
+      } catch (error) {
+        console.error('Error loading workout:', error)
         router.push('/dashboard')
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('Error loading workout:', error)
-      router.push('/dashboard')
     }
+    
+    loadWorkout()
   }, [id, router])
 
-  if (!workout) {
+  if (loading || !workout) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
       </div>
     )
   }
