@@ -1,5 +1,19 @@
 import { createClient } from '@/lib/db/client-fixed'
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Helper to validate and clean UUIDs
+function validateUUID(id: string): string {
+  // Remove any extra characters and validate
+  const cleanId = id.substring(0, 36)
+  if (UUID_REGEX.test(cleanId)) {
+    return cleanId
+  }
+  console.warn(`Invalid UUID detected: ${id}, cleaned to: ${cleanId}`)
+  return cleanId
+}
+
 // Simplified client service without auth requirements
 export const simpleClientService = {
   async getClients() {
@@ -26,7 +40,14 @@ export const simpleClientService = {
       }
 
       console.log(`✅ Query successful: received ${data?.length || 0} clients`)
-      return data || []
+      
+      // Clean any invalid UUIDs in the data
+      const cleanedData = (data || []).map(client => ({
+        ...client,
+        id: validateUUID(client.id)
+      }))
+      
+      return cleanedData
     } catch (error) {
       console.error('💥 Exception in getClients:', error)
       return []
@@ -111,10 +132,13 @@ export const simpleClientService = {
     try {
       const supabase = createClient()
       
+      // Clean the ID before querying
+      const cleanId = validateUUID(id)
+      
       const { data, error } = await supabase
         .from('workout_clients')
         .select('*')
-        .eq('id', id)
+        .eq('id', cleanId)
         .single()
 
       if (error) {

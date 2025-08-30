@@ -68,12 +68,16 @@ export default function ClientPage() {
       setLoading(true)
       setError('')
       
+      // Clean the client ID (remove any extra characters)
+      const cleanClientId = clientId.substring(0, 36)
+      console.log('Loading client with ID:', cleanClientId, 'Original:', clientId)
+      
       // Load client from Supabase
       const supabase = createClient()
       const { data: foundClient, error: clientError } = await supabase
         .from('workout_clients')
         .select('*')
-        .eq('id', clientId)
+        .eq('id', cleanClientId)
         .single()
       
       if (clientError) {
@@ -89,7 +93,7 @@ export default function ClientPage() {
         const { data: clientWorkouts, error: workoutsError } = await supabase
           .from('workout_sessions')
           .select('id, title, description, workout_type, difficulty, created_at, client_id')
-          .eq('client_id', clientId)
+          .eq('client_id', cleanClientId)
           .order('created_at', { ascending: false })
         
         if (workoutsError) {
@@ -112,11 +116,14 @@ export default function ClientPage() {
     if (!client || !confirm('Are you sure you want to delete this client?')) return
     
     try {
+      // Clean the client ID
+      const cleanClientId = clientId.substring(0, 36)
+      
       const supabase = createClient()
       const { error } = await supabase
         .from('workout_clients')
         .delete()
-        .eq('id', clientId)
+        .eq('id', cleanClientId)
 
       if (error) {
         console.error('Error deleting client:', error)
