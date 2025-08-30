@@ -7,13 +7,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  // Increase serverless function timeout for large file processing
-  api: {
-    responseLimit: false,
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
+  // Note: api configuration has moved to route-specific settings in Next.js 13+
+  // Use route segment config in individual API routes instead
 };
 
 export default nextConfig;

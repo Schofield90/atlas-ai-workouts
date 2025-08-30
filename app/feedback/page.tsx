@@ -196,8 +196,8 @@ function FeedbackForm() {
                     className="flex-1"
                     aria-labelledby="intensity-slider"
                     aria-describedby="intensity-min intensity-max intensity-description"
-                    aria-valuemin="1"
-                    aria-valuemax="10"
+                    aria-valuemin={1}
+                    aria-valuemax={10}
                     aria-valuenow={intensityRating}
                     aria-valuetext={`${intensityRating} out of 10`}
                   />
@@ -229,8 +229,8 @@ function FeedbackForm() {
                     className="flex-1"
                     aria-labelledby="volume-slider"
                     aria-describedby="volume-min volume-max volume-description"
-                    aria-valuemin="1"
-                    aria-valuemax="10"
+                    aria-valuemin={1}
+                    aria-valuemax={10}
                     aria-valuenow={volumeRating}
                     aria-valuetext={`${volumeRating} out of 10`}
                   />
