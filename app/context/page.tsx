@@ -110,11 +110,15 @@ export default function ContextPage() {
         </div>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-lg flex items-start gap-2 ${
-            message.type === 'success' 
-              ? 'bg-green-900/30 text-green-400 border border-green-800' 
-              : 'bg-red-900/30 text-red-400 border border-red-800'
-          }`}>
+          <div 
+            role="alert"
+            aria-live="polite"
+            className={`mb-6 p-4 rounded-lg flex items-start gap-2 ${
+              message.type === 'success' 
+                ? 'bg-green-900/30 text-green-400 border border-green-800' 
+                : 'bg-red-900/30 text-red-400 border border-red-800'
+            }`}
+          >
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             ) : (
@@ -125,49 +129,81 @@ export default function ContextPage() {
         )}
 
         {/* Add New SOP */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+        <section className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
             <Plus className="w-5 h-5" />
             Add New SOP
           </h3>
           
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="SOP Title (e.g., 'Beginner Assessment Protocol')"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
-              value={newSop.title}
-              onChange={(e) => setNewSop({ ...newSop, title: e.target.value })}
-            />
+          <form onSubmit={(e) => { e.preventDefault(); saveSop(); }} className="space-y-4">
+            <div>
+              <label htmlFor="sop-title" className="block text-sm font-medium text-gray-300 mb-1">
+                SOP Title *
+              </label>
+              <input
+                id="sop-title"
+                type="text"
+                placeholder="e.g., 'Beginner Assessment Protocol'"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
+                value={newSop.title}
+                onChange={(e) => setNewSop({ ...newSop, title: e.target.value })}
+                required
+                aria-required="true"
+                aria-describedby="title-hint"
+              />
+              <div id="title-hint" className="sr-only">Enter a descriptive title for your standard operating procedure</div>
+            </div>
             
-            <select
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
-              value={newSop.category}
-              onChange={(e) => setNewSop({ ...newSop, category: e.target.value as any })}
-            >
-              <option value="general">General</option>
-              <option value="training">Training Protocols</option>
-              <option value="nutrition">Nutrition Guidelines</option>
-              <option value="assessment">Assessment Methods</option>
-            </select>
+            <div>
+              <label htmlFor="sop-category" className="block text-sm font-medium text-gray-300 mb-1">
+                Category
+              </label>
+              <select
+                id="sop-category"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
+                value={newSop.category}
+                onChange={(e) => setNewSop({ ...newSop, category: e.target.value as any })}
+                aria-describedby="category-hint"
+              >
+                <option value="general">General</option>
+                <option value="training">Training Protocols</option>
+                <option value="nutrition">Nutrition Guidelines</option>
+                <option value="assessment">Assessment Methods</option>
+              </select>
+              <div id="category-hint" className="sr-only">Choose the most appropriate category for this SOP</div>
+            </div>
             
-            <textarea
-              placeholder="Enter your SOP content here. Be detailed - this helps the AI understand your methods and preferences..."
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg h-48 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
-              value={newSop.content}
-              onChange={(e) => setNewSop({ ...newSop, content: e.target.value })}
-            />
+            <div>
+              <label htmlFor="sop-content" className="block text-sm font-medium text-gray-300 mb-1">
+                SOP Content *
+              </label>
+              <textarea
+                id="sop-content"
+                placeholder="Enter your SOP content here. Be detailed - this helps the AI understand your methods and preferences..."
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg h-48 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
+                value={newSop.content}
+                onChange={(e) => setNewSop({ ...newSop, content: e.target.value })}
+                required
+                aria-required="true"
+                aria-describedby="content-hint"
+              />
+              <div id="content-hint" className="sr-only">Provide detailed content for your SOP including methods, preferences, and guidelines</div>
+            </div>
             
             <button
-              onClick={saveSop}
+              type="submit"
               disabled={saving || !newSop.title || !newSop.content}
-              className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-500 flex items-center gap-2 disabled:opacity-50"
+              className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-500 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-describedby="save-status"
             >
               <Save className="w-4 h-4" />
-              Save SOP
+              {saving ? 'Saving...' : 'Save SOP'}
             </button>
-          </div>
-        </div>
+            <div id="save-status" className="sr-only">
+              {!newSop.title || !newSop.content ? 'Please fill in both title and content to save' : 'Click to save your SOP'}
+            </div>
+          </form>
+        </section>
 
         {/* Existing SOPs */}
         <div className="space-y-4">
@@ -203,6 +239,8 @@ export default function ContextPage() {
                     <button
                       onClick={() => deleteSop(sop.id)}
                       className="text-red-400 hover:text-red-300 p-2"
+                      aria-label={`Delete SOP: ${sop.title}`}
+                      title="Delete this SOP"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

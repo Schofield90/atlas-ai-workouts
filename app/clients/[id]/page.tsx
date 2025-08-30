@@ -16,24 +16,37 @@ import {
   Calendar,
   ChevronRight
 } from 'lucide-react'
+import { createClient } from '@/lib/db/client-fixed'
 
 interface Client {
   id: string
   full_name: string
+  organization_id?: string
+  user_id?: string
   email?: string
   phone?: string
+  age?: number
+  sex?: string
+  height_cm?: number
+  weight_kg?: number
   goals?: string
   injuries?: string
-  equipment?: string
+  equipment?: any[]
+  preferences?: any
   notes?: string
   created_at: string
+  updated_at: string
 }
 
 interface Workout {
   id: string
+  client_id?: string
   title: string
-  clients?: { full_name: string }
+  description?: string
+  workout_type?: string
+  difficulty?: string
   created_at: string
+  client?: { full_name: string }
 }
 
 export default function ClientPage() {
@@ -50,26 +63,40 @@ export default function ClientPage() {
     loadClientData()
   }, [clientId])
 
-  function loadClientData() {
+  async function loadClientData() {
     try {
-      // Load client
-      const savedClients = localStorage.getItem('ai-workout-clients')
-      const clients = savedClients ? JSON.parse(savedClients) : []
-      const foundClient = Array.isArray(clients) ? 
-        clients.find((c: Client) => c.id === clientId) : null
+      setLoading(true)
+      setError('')
+      
+      // Load client from Supabase
+      const supabase = createClient()
+      const { data: foundClient, error: clientError } = await supabase
+        .from('workout_clients')
+        .select('*')
+        .eq('id', clientId)
+        .single()
+      
+      if (clientError) {
+        console.error('Error loading client:', clientError)
+        setError('Client not found')
+        return
+      }
       
       if (foundClient) {
         setClient(foundClient)
         
-        // Load workouts for this client
-        const savedWorkouts = localStorage.getItem('ai-workout-workouts')
-        const allWorkouts = savedWorkouts ? JSON.parse(savedWorkouts) : []
-        const clientWorkouts = Array.isArray(allWorkouts) ?
-          allWorkouts.filter((w: any) => 
-            w.clients?.full_name === foundClient.full_name ||
-            w.clientId === clientId
-          ) : []
-        setWorkouts(clientWorkouts)
+        // Load workouts for this client from Supabase
+        const { data: clientWorkouts, error: workoutsError } = await supabase
+          .from('workout_sessions')
+          .select('id, title, description, workout_type, difficulty, created_at, client_id')
+          .eq('client_id', clientId)
+          .order('created_at', { ascending: false })
+        
+        if (workoutsError) {
+          console.error('Error loading workouts:', workoutsError)
+        } else {
+          setWorkouts(clientWorkouts || [])
+        }
       } else {
         setError('Client not found')
       }
@@ -81,14 +108,22 @@ export default function ClientPage() {
     }
   }
 
-  function deleteClient() {
+  async function deleteClient() {
     if (!client || !confirm('Are you sure you want to delete this client?')) return
     
     try {
-      const saved = localStorage.getItem('ai-workout-clients')
-      const clients = saved ? JSON.parse(saved) : []
-      const updatedClients = clients.filter((c: Client) => c.id !== clientId)
-      localStorage.setItem('ai-workout-clients', JSON.stringify(updatedClients))
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('workout_clients')
+        .delete()
+        .eq('id', clientId)
+
+      if (error) {
+        console.error('Error deleting client:', error)
+        setError('Failed to delete client')
+        return
+      }
+
       router.push('/clients')
     } catch (err) {
       console.error('Error deleting client:', err)
@@ -237,13 +272,18 @@ export default function ClientPage() {
             )}
 
             {/* Equipment */}
-            {client.equipment && (
+            {client.equipment && client.equipment.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center mb-4">
                   <Dumbbell className="h-5 w-5 text-purple-600 mr-2" />
                   <h3 className="text-lg font-semibold">Available Equipment</h3>
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap">{client.equipment}</p>
+                <div className="text-gray-700">
+                  {Array.isArray(client.equipment) 
+                    ? client.equipment.join(', ')
+                    : client.equipment
+                  }
+                </div>
               </div>
             )}
 

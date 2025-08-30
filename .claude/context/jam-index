@@ -1,0 +1,95 @@
+# JAM Index - Atlas AI Workouts Project
+# Updated: 2025-08-30T00:00:00Z
+
+## Project Documentation Links
+
+### Setup & Configuration
+- **SETUP_GUIDE.md** - Project setup instructions
+  [file: /Users/samschofield/atlas-ai-workouts/SETUP_GUIDE.md]
+- **QUICK_START_GUIDE.md** - Getting started guide
+  [file: /Users/samschofield/atlas-ai-workouts/QUICK_START_GUIDE.md]
+- **MIGRATION_GUIDE.md** - Database migration instructions
+  [file: /Users/samschofield/atlas-ai-workouts/MIGRATION_GUIDE.md]
+
+### API Documentation
+- **API_DOCUMENTATION.md** - Complete API reference
+  [file: /Users/samschofield/atlas-ai-workouts/API_DOCUMENTATION.md]
+- **API_USAGE.md** - API usage examples
+  [file: /Users/samschofield/atlas-ai-workouts/API_USAGE.md]
+
+### Quality Assurance Reports
+- **COMPREHENSIVE_QA_REPORT_CYCLE_3_FINAL.md** - Final QA testing report
+  [file: /Users/samschofield/atlas-ai-workouts/COMPREHENSIVE_QA_REPORT_CYCLE_3_FINAL.md]
+- **QA_COMPREHENSIVE_TEST_CASES.md** - Complete test case documentation
+  [file: /Users/samschofield/atlas-ai-workouts/QA_COMPREHENSIVE_TEST_CASES.md]
+
+### Excel Import System
+- **EXCEL_IMPORT_GUIDE.md** - Excel import functionality guide
+  [file: /Users/samschofield/atlas-ai-workouts/EXCEL_IMPORT_GUIDE.md]
+- **EXCEL_UPLOAD_FIXES.md** - Excel upload system fixes
+  [file: /Users/samschofield/atlas-ai-workouts/EXCEL_UPLOAD_FIXES.md]
+
+### Deployment & Infrastructure
+- **DEPLOYMENT_CONTEXT.md** - Deployment configuration context
+  [file: /Users/samschofield/atlas-ai-workouts/DEPLOYMENT_CONTEXT.md]
+- **CLOUD_STORAGE_STATUS.md** - Cloud storage implementation status
+  [file: /Users/samschofield/atlas-ai-workouts/CLOUD_STORAGE_STATUS.md]
+- **SUPABASE_MIGRATION_GUIDE.md** - Supabase migration instructions
+  [file: /Users/samschofield/atlas-ai-workouts/SUPABASE_MIGRATION_GUIDE.md]
+
+## Design Decisions
+
+### Architecture Decisions
+- **Next.js App Router**: Chosen for modern routing and SSR capabilities
+- **Supabase**: Selected for real-time database with built-in authentication
+- **Local Storage**: Used for client-side caching of contexts and workouts
+- **No External State Management**: React's built-in state sufficient for current scope
+  [context: Single-page applications with moderate state complexity]
+
+### UI/UX Decisions
+- **Searchable Dropdowns**: Enhanced user experience for client selection
+- **Bulk Operations**: Separate interface for multi-client workflow efficiency
+- **Progressive Disclosure**: Advanced options hidden by default
+- **Real-time Feedback**: Progress indicators and status updates
+  [context: Trainer workflow optimization]
+
+## Component Architecture
+
+### Builder Pattern
+```
+/app/builder/
+  ├── page.tsx           # Single workout builder
+  └── bulk/page.tsx      # Bulk workout builder
+```
+**Decision Rationale**: Separate single and bulk interfaces for optimized workflows
+[source: Directory structure analysis]
+
+### Data Flow Pattern
+```
+Component State → API Call → Response Handling → localStorage → Navigation
+```
+**Decision Rationale**: Simple unidirectional data flow without external state management
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L100-L147]
+
+## External Resources
+
+### Framework Documentation
+- **Next.js 15.x**: https://nextjs.org/docs
+- **React 19.x**: https://react.dev/reference/react
+- **Tailwind CSS**: https://tailwindcss.com/docs
+- **Lucide Icons**: https://lucide.dev/
+
+### Database Resources
+- **Supabase Docs**: https://supabase.com/docs
+- **PostgreSQL**: https://www.postgresql.org/docs/
+- **Row Level Security**: https://supabase.com/docs/guides/auth/row-level-security
+
+### AI Integration
+- **Anthropic Claude**: https://docs.anthropic.com/
+- **OpenAI API**: https://platform.openai.com/docs
+  [dependencies: @anthropic-ai/sdk@0.60.0, openai@5.13.1]
+
+---
+
+**NOTE: No automation/workflow design docs found** - This project focuses on fitness workout generation, not automation/workflow building systems.
+[Verified: 2025-08-30T00:00:00Z]

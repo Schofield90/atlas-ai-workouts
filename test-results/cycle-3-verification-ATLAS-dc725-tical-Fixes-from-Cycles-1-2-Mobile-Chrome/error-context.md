@@ -1,0 +1,49 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "← Back" [ref=e7] [cursor=pointer]:
+            - /url: /dashboard
+          - heading "Workout Builder" [level=1] [ref=e8]
+        - link "Bulk Create" [ref=e10] [cursor=pointer]:
+          - /url: /builder/bulk
+          - img [ref=e11] [cursor=pointer]
+          - text: Bulk Create
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - img [ref=e19]
+          - heading "Create AI Workout" [level=2] [ref=e25]
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: Workout Name *
+            - textbox "Workout Name *" [active] [ref=e29]
+          - generic [ref=e30]:
+            - generic [ref=e31]: Select Client *
+            - generic [ref=e32]:
+              - combobox "Select Client *" [ref=e33]
+              - generic [ref=e34]: Search for a client by name or email, or select Guest User for no specific client
+              - generic:
+                - img
+          - generic [ref=e35]:
+            - generic [ref=e36]: Training Context (optional)
+            - combobox "Training Context (optional)" [ref=e37]:
+              - option "No context selected" [selected]
+            - paragraph [ref=e38]:
+              - link "Add context" [ref=e39] [cursor=pointer]:
+                - /url: /context
+              - text: to provide training philosophy, equipment lists, or reference materials
+          - button "Advanced Options" [ref=e40]:
+            - img [ref=e41]
+            - text: Advanced Options
+          - generic [ref=e43]: Toggle to show additional workout customization options
+          - button "Generate Workout" [disabled] [ref=e44]
+          - generic [ref=e45]: Please enter a workout name to generate
+  - button "Open AI Assistant" [ref=e46]:
+    - img [ref=e47]
+    - generic [ref=e50]: AI Assistant
+```

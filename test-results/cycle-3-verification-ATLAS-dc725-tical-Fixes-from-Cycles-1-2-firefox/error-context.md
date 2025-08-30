@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Workout Platform" [level=1] [ref=e7]
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - img [ref=e10]
+            - text: AI Workout Generator (Cloud)
+          - link [ref=e12] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e13] [cursor=pointer]
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Welcome Back" [level=2] [ref=e18]
+        - paragraph [ref=e19]: All data synced to cloud storage
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - img [ref=e23]
+            - generic [ref=e28]: "0"
+          - heading "Total Clients" [level=3] [ref=e29]
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e38]: "0"
+          - heading "Total Workouts" [level=3] [ref=e39]
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - generic [ref=e51]: AI
+          - heading "Powered by AI" [level=3] [ref=e52]
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e60]: 100%
+          - heading "Cloud Synced" [level=3] [ref=e61]
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - generic [ref=e65]:
+            - heading "Recent Clients" [level=3] [ref=e66]
+            - link "View All →" [ref=e67] [cursor=pointer]:
+              - /url: /clients
+          - generic [ref=e69]:
+            - img [ref=e70]
+            - paragraph [ref=e75]: No clients yet
+            - link "Add First Client" [ref=e76] [cursor=pointer]:
+              - /url: /clients/new
+              - img [ref=e77] [cursor=pointer]
+              - text: Add First Client
+        - generic [ref=e80]:
+          - generic [ref=e82]:
+            - heading "Recent Workouts" [level=3] [ref=e83]
+            - link "View All →" [ref=e84] [cursor=pointer]:
+              - /url: /workouts
+          - generic [ref=e86]:
+            - img [ref=e87]
+            - paragraph [ref=e93]: No workouts yet
+            - link "Create First Workout" [ref=e94] [cursor=pointer]:
+              - /url: /builder
+              - img [ref=e95] [cursor=pointer]
+              - text: Create First Workout
+      - generic [ref=e98]:
+        - link "Add Client" [ref=e99] [cursor=pointer]:
+          - /url: /clients/new
+          - img [ref=e100] [cursor=pointer]
+          - generic [ref=e103] [cursor=pointer]: Add Client
+        - link "AI Workout" [ref=e104] [cursor=pointer]:
+          - /url: /builder
+          - img [ref=e105] [cursor=pointer]
+          - generic [ref=e114] [cursor=pointer]: AI Workout
+        - link "All Clients" [ref=e115] [cursor=pointer]:
+          - /url: /clients
+          - img [ref=e116] [cursor=pointer]
+          - generic [ref=e121] [cursor=pointer]: All Clients
+        - link "All Workouts" [ref=e122] [cursor=pointer]:
+          - /url: /workouts
+          - img [ref=e123] [cursor=pointer]
+          - generic [ref=e129] [cursor=pointer]: All Workouts
+        - link "SOPs & Context" [ref=e130] [cursor=pointer]:
+          - /url: /context
+          - img [ref=e131] [cursor=pointer]
+          - generic [ref=e140] [cursor=pointer]: SOPs & Context
+  - button "Open AI Assistant" [ref=e141]:
+    - img [ref=e142]
+    - generic [ref=e145]: AI Assistant
+  - generic [ref=e150] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e151] [cursor=pointer]:
+      - img [ref=e152] [cursor=pointer]
+    - generic [ref=e156] [cursor=pointer]:
+      - button "Open issues overlay" [ref=e157] [cursor=pointer]:
+        - generic [ref=e158] [cursor=pointer]:
+          - generic [ref=e159] [cursor=pointer]: "0"
+          - generic [ref=e160] [cursor=pointer]: "1"
+        - generic [ref=e161] [cursor=pointer]: Issue
+      - button "Collapse issues badge" [ref=e162] [cursor=pointer]:
+        - img [ref=e163] [cursor=pointer]
+  - alert [ref=e165]
+```

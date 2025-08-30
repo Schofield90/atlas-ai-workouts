@@ -80,15 +80,15 @@ export default function NewClientPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-900">
+      <nav className="bg-gray-800 shadow-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <a href="/dashboard" className="text-gray-500 hover:text-gray-700 mr-4">
+              <a href="/dashboard" className="text-gray-400 hover:text-gray-100 mr-4">
                 ← Back
               </a>
-              <h1 className="text-xl font-semibold">Add New Client</h1>
+              <h1 className="text-xl font-semibold text-gray-100">Add New Client</h1>
             </div>
           </div>
         </div>
@@ -97,67 +97,81 @@ export default function NewClientPage() {
       <main className="max-w-3xl mx-auto px-4 py-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+            <div 
+              role="alert" 
+              className="p-3 bg-red-900/30 border border-red-800 text-red-400 rounded"
+              aria-live="polite"
+            >
               {error}
             </div>
           )}
 
           {/* Basic Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <fieldset className="bg-gray-800 rounded-lg shadow p-6">
+            <legend className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
               <User className="h-5 w-5 mr-2" />
               Basic Information
-            </h2>
+            </legend>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="full_name" className="block text-sm font-medium text-gray-300 mb-1">
                   Full Name *
                 </label>
                 <input
+                  id="full_name"
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                   required
+                  aria-required="true"
+                  aria-invalid={error && !formData.full_name ? 'true' : 'false'}
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Mail className="h-4 w-4 inline mr-1" />
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+                  <Mail className="h-4 w-4 inline mr-1 text-gray-400" />
                   Email
                 </label>
                 <input
+                  id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="email-hint"
                 />
+                <div id="email-hint" className="sr-only">Optional field for client contact information</div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="age" className="block text-sm font-medium text-gray-300 mb-1">
                   Age
                 </label>
                 <input
+                  id="age"
                   type="number"
                   value={formData.age}
                   onChange={(e) => setFormData({...formData, age: e.target.value})}
                   min="1"
                   max="120"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="age-hint"
                 />
+                <div id="age-hint" className="sr-only">Client's age in years, between 1 and 120</div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="sex" className="block text-sm font-medium text-gray-300 mb-1">
                   Sex
                 </label>
                 <select
+                  id="sex"
                   value={formData.sex}
                   onChange={(e) => setFormData({...formData, sex: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
                 >
                   <option value="">Select...</option>
                   <option value="male">Male</option>
@@ -167,88 +181,102 @@ export default function NewClientPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="height_cm" className="block text-sm font-medium text-gray-300 mb-1">
                   Height (cm)
                 </label>
                 <input
+                  id="height_cm"
                   type="number"
                   value={formData.height_cm}
                   onChange={(e) => setFormData({...formData, height_cm: e.target.value})}
                   min="50"
                   max="300"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="height-hint"
                 />
+                <div id="height-hint" className="sr-only">Height in centimeters, between 50 and 300</div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="weight_kg" className="block text-sm font-medium text-gray-300 mb-1">
                   Weight (kg)
                 </label>
                 <input
+                  id="weight_kg"
                   type="number"
                   value={formData.weight_kg}
                   onChange={(e) => setFormData({...formData, weight_kg: e.target.value})}
                   min="20"
                   max="500"
                   step="0.1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="weight-hint"
                 />
+                <div id="weight-hint" className="sr-only">Weight in kilograms, between 20 and 500</div>
               </div>
             </div>
-          </div>
+          </fieldset>
 
           {/* Goals & Limitations */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <fieldset className="bg-gray-800 rounded-lg shadow p-6">
+            <legend className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
               <Target className="h-5 w-5 mr-2" />
               Goals & Limitations
-            </h2>
+            </legend>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goals" className="block text-sm font-medium text-gray-300 mb-1">
                   Fitness Goals
                 </label>
                 <textarea
+                  id="goals"
                   value={formData.goals}
                   onChange={(e) => setFormData({...formData, goals: e.target.value})}
                   placeholder="e.g., Build muscle, lose weight, improve endurance, get stronger..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="goals-hint"
                 />
+                <div id="goals-hint" className="sr-only">Describe the client's fitness objectives and what they want to achieve</div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                <label htmlFor="injuries" className="block text-sm font-medium text-gray-300 mb-1 flex items-center">
                   <AlertCircle className="h-4 w-4 mr-1 text-orange-500" />
                   Injuries or Limitations
                 </label>
                 <textarea
+                  id="injuries"
                   value={formData.injuries}
                   onChange={(e) => setFormData({...formData, injuries: e.target.value})}
                   placeholder="e.g., Lower back pain, knee issues, shoulder mobility limited..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="injuries-hint"
                 />
+                <div id="injuries-hint" className="sr-only">List any injuries, physical limitations, or medical conditions that may affect exercise selection</div>
               </div>
             </div>
-          </div>
+          </fieldset>
 
           {/* Available Equipment */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <fieldset className="bg-gray-800 rounded-lg shadow p-6">
+            <legend className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
               <Dumbbell className="h-5 w-5 mr-2" />
               Available Equipment
-            </h2>
+            </legend>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3" role="group" aria-labelledby="equipment-group-label">
+              <div id="equipment-group-label" className="sr-only">Select available equipment</div>
               {EQUIPMENT_OPTIONS.map((item) => (
-                <label key={item} className="flex items-center space-x-2 cursor-pointer">
+                <label key={item} className="flex items-center space-x-2 cursor-pointer text-gray-300">
                   <input
                     type="checkbox"
                     checked={formData.equipment.includes(item)}
                     onChange={() => handleEquipmentToggle(item)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-700"
+                    aria-describedby="equipment-hint"
                   />
                   <span className="text-sm">{item}</span>
                 </label>
@@ -256,28 +284,33 @@ export default function NewClientPage() {
             </div>
             
             <div className="mt-4">
-              <label className="flex items-center space-x-2 cursor-pointer">
+              <label className="flex items-center space-x-2 cursor-pointer text-gray-300">
                 <input
                   type="checkbox"
                   checked={formData.equipment.includes('Bodyweight')}
                   onChange={() => handleEquipmentToggle('Bodyweight')}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 rounded bg-gray-700"
+                  aria-describedby="equipment-hint"
                 />
                 <span className="text-sm font-medium">Bodyweight Only</span>
               </label>
             </div>
-          </div>
+            <div id="equipment-hint" className="sr-only">Choose all equipment types available to this client for workout planning</div>
+          </fieldset>
 
           {/* Additional Notes */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Additional Notes</h2>
+          <div className="bg-gray-800 rounded-lg shadow p-6">
+            <label htmlFor="notes" className="block text-lg font-semibold text-gray-100 mb-4">Additional Notes</label>
             <textarea
+              id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
               placeholder="Any other relevant information about the client..."
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+              aria-describedby="notes-hint"
             />
+            <div id="notes-hint" className="sr-only">Optional additional information about the client that may be helpful for workout planning</div>
           </div>
 
           {/* Submit Button */}
@@ -285,14 +318,14 @@ export default function NewClientPage() {
             <button
               type="button"
               onClick={() => router.push('/dashboard')}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-600 text-gray-300 rounded-md hover:bg-gray-700"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center"
             >
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Creating...' : 'Create Client'}

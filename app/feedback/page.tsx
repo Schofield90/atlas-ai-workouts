@@ -100,14 +100,14 @@ function FeedbackForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Thank You!</h2>
-          <p className="text-gray-600">
+          <h2 className="text-2xl font-bold mb-2 text-gray-100">Thank You!</h2>
+          <p className="text-gray-300">
             Your feedback helps us create better workouts for you.
           </p>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-sm text-gray-400 mt-4">
             Redirecting to dashboard...
           </p>
         </div>
@@ -116,42 +116,45 @@ function FeedbackForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-900">
+      <nav className="bg-gray-800 shadow-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <a href="/dashboard" className="text-gray-500 hover:text-gray-700 mr-4">
+              <a href="/dashboard" className="text-gray-400 hover:text-gray-100 mr-4">
                 ← Back
               </a>
-              <h1 className="text-xl font-semibold">Workout Feedback</h1>
+              <h1 className="text-xl font-semibold text-gray-100">Workout Feedback</h1>
             </div>
           </div>
         </div>
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-lg shadow-xl p-8">
+        <div className="bg-gray-800 rounded-lg shadow-xl p-8">
           {workout ? (
             <>
               <div className="mb-6">
-                <h2 className="text-2xl font-bold mb-2">{workout.title}</h2>
-                <p className="text-gray-600">
+                <h2 className="text-2xl font-bold mb-2 text-gray-100">{workout.title}</h2>
+                <p className="text-gray-300">
                   For {workout.clients?.full_name}
                 </p>
               </div>
 
               {/* Overall Rating */}
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+              <fieldset className="mb-8">
+                <legend className="block text-sm font-medium text-gray-300 mb-3">
                   Overall, how was this workout?
-                </label>
-                <div className="flex justify-center space-x-2">
+                </legend>
+                <div className="flex justify-center space-x-2" role="group" aria-labelledby="overall-rating-label">
+                  <div id="overall-rating-label" className="sr-only">Rate this workout from 1 to 5 stars</div>
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       onClick={() => setRating(star)}
                       className="p-1 hover:scale-110 transition-transform"
+                      aria-label={`Rate ${star} out of 5 stars`}
+                      aria-pressed={star <= rating}
                     >
                       <Star
                         className={`h-10 w-10 ${
@@ -163,34 +166,45 @@ function FeedbackForm() {
                     </button>
                   ))}
                 </div>
-                <div className="text-center mt-2 text-sm text-gray-500">
+                <div className="text-center mt-2 text-sm text-gray-400">
                   {rating === 1 && 'Poor'}
                   {rating === 2 && 'Below Average'}
                   {rating === 3 && 'Average'}
                   {rating === 4 && 'Good'}
                   {rating === 5 && 'Excellent'}
                 </div>
-              </div>
+                <div className="sr-only" aria-live="polite" aria-atomic="true">
+                  Current rating: {rating} out of 5 stars
+                </div>
+              </fieldset>
 
               {/* Intensity Rating */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="intensity-slider" className="block text-sm font-medium text-gray-300 mb-2">
                   <Zap className="h-4 w-4 inline mr-1" />
                   Intensity Level
                 </label>
                 <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-500">Too Easy</span>
+                  <span className="text-sm text-gray-400" id="intensity-min">Too Easy</span>
                   <input
+                    id="intensity-slider"
                     type="range"
                     min="1"
                     max="10"
                     value={intensityRating}
                     onChange={(e) => setIntensityRating(parseInt(e.target.value))}
                     className="flex-1"
+                    aria-labelledby="intensity-slider"
+                    aria-describedby="intensity-min intensity-max intensity-description"
+                    aria-valuemin="1"
+                    aria-valuemax="10"
+                    aria-valuenow={intensityRating}
+                    aria-valuetext={`${intensityRating} out of 10`}
                   />
-                  <span className="text-sm text-gray-500">Too Hard</span>
+                  <span className="text-sm text-gray-400" id="intensity-max">Too Hard</span>
                 </div>
-                <div className="text-center mt-1 text-sm text-gray-600">
+                <div id="intensity-description" className="sr-only">Rate the workout intensity on a scale from 1 (too easy) to 10 (too hard)</div>
+                <div className="text-center mt-1 text-sm text-gray-300">
                   {intensityRating <= 3 && 'Could handle more intensity'}
                   {intensityRating >= 4 && intensityRating <= 6 && 'Just right'}
                   {intensityRating >= 7 && 'Too intense'}
@@ -199,23 +213,31 @@ function FeedbackForm() {
 
               {/* Volume Rating */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="volume-slider" className="block text-sm font-medium text-gray-300 mb-2">
                   <Target className="h-4 w-4 inline mr-1" />
                   Exercise Volume
                 </label>
                 <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-500">Too Little</span>
+                  <span className="text-sm text-gray-400" id="volume-min">Too Little</span>
                   <input
+                    id="volume-slider"
                     type="range"
                     min="1"
                     max="10"
                     value={volumeRating}
                     onChange={(e) => setVolumeRating(parseInt(e.target.value))}
                     className="flex-1"
+                    aria-labelledby="volume-slider"
+                    aria-describedby="volume-min volume-max volume-description"
+                    aria-valuemin="1"
+                    aria-valuemax="10"
+                    aria-valuenow={volumeRating}
+                    aria-valuetext={`${volumeRating} out of 10`}
                   />
-                  <span className="text-sm text-gray-500">Too Much</span>
+                  <span className="text-sm text-gray-400" id="volume-max">Too Much</span>
                 </div>
-                <div className="text-center mt-1 text-sm text-gray-600">
+                <div id="volume-description" className="sr-only">Rate the exercise volume on a scale from 1 (too little) to 10 (too much)</div>
+                <div className="text-center mt-1 text-sm text-gray-300">
                   {volumeRating <= 3 && 'Could do more exercises/sets'}
                   {volumeRating >= 4 && volumeRating <= 6 && 'Perfect amount'}
                   {volumeRating >= 7 && 'Too many exercises/sets'}
@@ -224,56 +246,71 @@ function FeedbackForm() {
 
               {/* Duration */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="duration" className="block text-sm font-medium text-gray-300 mb-2">
                   <Clock className="h-4 w-4 inline mr-1" />
                   Actual Duration (minutes)
                 </label>
                 <input
+                  id="duration"
                   type="number"
                   value={duration || ''}
                   onChange={(e) => setDuration(parseInt(e.target.value) || null)}
                   placeholder="How long did it take?"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="duration-hint"
+                  min="1"
+                  max="300"
                 />
+                <div id="duration-hint" className="sr-only">Enter the actual time it took to complete the workout in minutes</div>
               </div>
 
               {/* Notes */}
               <div className="mb-8">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-2">
                   <MessageSquare className="h-4 w-4 inline mr-1" />
                   Additional Comments (optional)
                 </label>
                 <textarea
+                  id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="What worked well? What could be improved? Any exercises you particularly liked or disliked?"
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+                  aria-describedby="notes-hint"
                 />
+                <div id="notes-hint" className="sr-only">Optional feedback about what worked well, what could be improved, or exercises you liked or disliked</div>
               </div>
 
               {/* Submit Button */}
               <button
+                type="button"
                 onClick={submitFeedback}
                 disabled={submitting}
-                className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+                aria-describedby={submitting ? 'submit-status' : undefined}
               >
                 {submitting ? 'Submitting...' : 'Submit Feedback'}
               </button>
+              {submitting && (
+                <div id="submit-status" className="sr-only" aria-live="polite">
+                  Submitting your feedback, please wait
+                </div>
+              )}
 
-              <p className="text-xs text-gray-500 text-center mt-4">
+              <p className="text-xs text-gray-400 text-center mt-4">
                 Your feedback helps our AI create better workouts tailored to your preferences
               </p>
             </>
           ) : workoutId ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading workout...</p>
+              <p className="mt-4 text-gray-300">Loading workout...</p>
             </div>
           ) : (
             <div className="text-center py-8">
-              <h2 className="text-xl font-semibold mb-4">Rate Your Recent Workouts</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-xl font-semibold mb-4 text-gray-100">Rate Your Recent Workouts</h2>
+              <p className="text-gray-300 mb-6">
                 Select a workout from your history to provide feedback
               </p>
               <a
@@ -293,7 +330,7 @@ function FeedbackForm() {
 export default function FeedbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     }>

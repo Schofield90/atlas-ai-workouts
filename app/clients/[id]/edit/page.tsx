@@ -144,12 +144,16 @@ export default function EditClientPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+            <div 
+              role="alert" 
+              className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded"
+              aria-live="polite"
+            >
               {error}
             </div>
           )}
 
-          <div className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); saveClient(); }} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name *
@@ -161,6 +165,8 @@ export default function EditClientPage() {
                 onChange={(e) => setClient({ ...client, full_name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                aria-required="true"
+                aria-invalid={!client.full_name.trim() ? 'true' : 'false'}
               />
             </div>
 
@@ -174,7 +180,9 @@ export default function EditClientPage() {
                 value={client.email || ''}
                 onChange={(e) => setClient({ ...client, email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-describedby="email-hint"
               />
+              <div id="email-hint" className="sr-only">Optional email address for client contact</div>
             </div>
 
             <div>
@@ -187,7 +195,9 @@ export default function EditClientPage() {
                 value={client.phone || ''}
                 onChange={(e) => setClient({ ...client, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-describedby="phone-hint"
               />
+              <div id="phone-hint" className="sr-only">Optional phone number for client contact</div>
             </div>
 
             <div>
@@ -201,7 +211,9 @@ export default function EditClientPage() {
                 rows={3}
                 placeholder="e.g., Build muscle, lose weight, improve endurance"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-describedby="goals-hint"
               />
+              <div id="goals-hint" className="sr-only">Describe the client's fitness objectives and what they want to achieve</div>
             </div>
 
             <div>
@@ -215,7 +227,9 @@ export default function EditClientPage() {
                 rows={2}
                 placeholder="e.g., Lower back pain, knee injury, shoulder impingement"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-describedby="injuries-hint"
               />
+              <div id="injuries-hint" className="sr-only">List any injuries, physical limitations, or medical conditions that may affect exercise selection</div>
             </div>
 
             <div>
@@ -232,7 +246,9 @@ export default function EditClientPage() {
                 rows={2}
                 placeholder="e.g., Dumbbells, barbell, pull-up bar, resistance bands"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-describedby="equipment-hint"
               />
+              <div id="equipment-hint" className="sr-only">List available equipment separated by commas for workout planning</div>
             </div>
 
             <div>
@@ -246,31 +262,38 @@ export default function EditClientPage() {
                 rows={3}
                 placeholder="Any other relevant information..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-describedby="notes-hint"
               />
+              <div id="notes-hint" className="sr-only">Optional additional information that may be helpful for workout planning</div>
             </div>
 
             <div className="text-sm text-gray-500">
               Created: {new Date(client.created_at).toLocaleDateString()}
             </div>
-          </div>
 
-          <div className="mt-6 flex space-x-3">
-            <button
-              onClick={saveClient}
-              disabled={saving || !client.full_name.trim()}
-              className="flex-1 py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-            
-            <button
-              onClick={() => router.push('/clients')}
-              className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+            <div className="mt-6 flex space-x-3">
+              <button
+                type="submit"
+                disabled={saving || !client.full_name.trim()}
+                className="flex-1 py-2 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                aria-describedby="save-status"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => router.push('/clients')}
+                className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+            <div id="save-status" className="sr-only">
+              {!client.full_name.trim() ? 'Please enter a client name to save changes' : saving ? 'Saving your changes, please wait' : 'Click to save all changes'}
+            </div>
+          </form>
         </div>
       </main>
     </div>

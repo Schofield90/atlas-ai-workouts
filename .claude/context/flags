@@ -1,0 +1,85 @@
+# Feature Flags & Configuration - Atlas AI Workouts Project
+# Updated: 2025-08-30T00:00:00Z
+
+## UI Feature Flags
+
+### showAdvanced (React State)
+**Type**: boolean state variable
+**Default**: false
+**Purpose**: Toggle visibility of advanced workout options (duration, intensity, focus, equipment)
+**Implementation**: Controlled by chevron button in workout builder
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L15,L349-L360]
+
+### showClientDropdown (React State)
+**Type**: boolean state variable
+**Default**: false
+**Purpose**: Control searchable client selection dropdown visibility
+**Implementation**: Opens on focus/search, closes on outside click
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L14,L256-L314]
+
+### showResults (React State)
+**Type**: boolean state variable
+**Default**: false
+**Purpose**: Display bulk generation results after completion
+**Implementation**: Shows success/failure summary with navigation options
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L56,L594-L649]
+
+## Form Validation Flags
+
+### generating (React State)
+**Type**: boolean state variable
+**Default**: false
+**Purpose**: Disable form inputs and show loading state during workout generation
+**Implementation**: Prevents multiple submissions and provides user feedback
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L20,L436-L437]
+
+### title.trim() validation
+**Type**: inline validation
+**Purpose**: Require workout name before generation
+**Implementation**: Disables generate button when empty
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L101,L436]
+
+## Default Configuration Values
+
+### Workout Duration
+**Type**: number
+**Default**: 60 (minutes)
+**Range**: 15-120 minutes
+**Scope**: Both single and bulk builders
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L16]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L47]
+
+### Intensity Level
+**Type**: string enum
+**Default**: 'moderate'
+**Options**: 'light' | 'moderate' | 'intense'
+**Scope**: Both single and bulk builders
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L17]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L48]
+
+### Context Selection
+**Type**: object | null
+**Default**: null (auto-selects most recent if available)
+**Purpose**: Provide training philosophy/reference materials
+**Implementation**: Sorted by updated_at/created_at desc
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L84-L92]
+
+## Environment Configuration
+
+### Next.js App Router
+**Framework**: Next.js 15.5.0
+**Rendering**: Client-side components ('use client' directive)
+**Routing**: App router with dynamic routes
+[source: /Users/samschofield/atlas-ai-workouts/package.json:L33]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L1]
+
+### Supabase Configuration
+**Client**: @supabase/supabase-js v2.55.0
+**Auth**: @supabase/ssr with RLS policies
+**Database**: PostgreSQL with workout_clients table
+[source: /Users/samschofield/atlas-ai-workouts/package.json:L24-L25]
+
+---
+
+**NOTE: No automation/workflow flags found** - This project does not implement automation builder configuration flags. All flags relate to workout generation UI state management.
+[Verified: 2025-08-30T00:00:00Z]

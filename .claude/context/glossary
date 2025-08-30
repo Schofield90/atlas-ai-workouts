@@ -1,0 +1,60 @@
+# Glossary - Atlas AI Workouts Project
+# Updated: 2025-08-30T00:00:00Z
+
+## Project-Specific Terms
+
+**Builder/Workout Builder**: Single workout generation interface at /app/builder/page.tsx - allows creation of individual AI-generated workouts for specific clients with customization options (duration, intensity, focus, equipment)
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L1-L470]
+
+**Bulk Builder**: Multi-workout generation interface at /app/builder/bulk/page.tsx - enables batch creation of workouts for multiple clients with shared default settings and individual customization per client
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L1-L653]
+
+**WorkoutConfig**: TypeScript interface defining workout generation parameters including clientId, client data, title, duration, intensity, focus, equipment, and contextId
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L28-L37]
+
+**Training Context**: Optional AI enhancement data stored in localStorage as 'ai-workout-contexts' - provides training philosophy, equipment lists, or reference materials for workout generation
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L73-L98]
+
+**Client Selection**: Searchable dropdown component with filtering by name, email, or goals - supports Guest User mode for workouts without specific client data
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L208-L315]
+
+**Workout Generation API**: Backend endpoint at /api/workouts/generate-simple for AI-powered workout creation using client data, preferences, and context
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L115-L128]
+
+## Technical Architecture
+
+**Supabase Client**: Database connection using @supabase/supabase-js with client-side authentication and RLS policies
+[source: /Users/samschofield/atlas-ai-workouts/lib/db/client-fixed.ts]
+
+**Local Storage Data**: Client-side persistence for workout_clients, ai-workout-contexts, and ai-workout-workouts collections
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L75-L82]
+
+**Form State Management**: React useState hooks for managing form inputs, validation, and UI state without external state management libraries
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L10-L23]
+
+## User Interface Components
+
+**Advanced Options**: Collapsible form section for duration, intensity, focus area, and equipment customization
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L348-L430]
+
+**Generation Progress**: Real-time progress tracking with loading states and progress bars for bulk operations
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L54-L56]
+
+**Results Display**: Success/error feedback with navigation to generated workouts and batch operation summaries
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L594-L649]
+
+## Data Models
+
+**workout_clients**: Database table storing client information including full_name, email, goals, injuries, equipment
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L49-L52]
+
+**Client Interface**: TypeScript interface with id, full_name, email?, goals?, injuries?, equipment? properties
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L19-L26]
+
+**Workout Storage**: Generated workouts persisted to localStorage as 'ai-workout-workouts' array
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L136-L139]
+
+---
+
+**NOTE: No automation/workflow builder found** - This project implements workout generation builders, not automation/workflow node configuration systems. The "builder" terminology refers to workout creation interfaces, not automation flow builders.
+[Verified: 2025-08-30T00:00:00Z]

@@ -141,7 +141,7 @@ export default function AIAssistant() {
 
   return (
     <div className={`fixed z-50 ${isMinimized ? 'bottom-6 right-6' : 'bottom-6 right-6 sm:right-6 sm:bottom-6'}`}>
-      <div className={`bg-white rounded-lg shadow-2xl transition-all ${
+      <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-2xl transition-all ${
         isMinimized ? 'w-64' : 'w-96 h-[600px]'
       } flex flex-col`}>
         {/* Header */}
@@ -153,14 +153,14 @@ export default function AIAssistant() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsMinimized(!isMinimized)}
-              className="hover:bg-white/20 p-1 rounded transition-colors"
+              className="hover:bg-white/20 dark:hover:bg-gray-700 p-1 rounded transition-colors"
               aria-label={isMinimized ? "Maximize" : "Minimize"}
             >
               {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </button>
             <button
               onClick={() => setIsOpen(false)}
-              className="hover:bg-white/20 p-1 rounded transition-colors"
+              className="hover:bg-white/20 dark:hover:bg-gray-700 p-1 rounded transition-colors"
               aria-label="Close chat"
             >
               <X className="h-4 w-4" />
@@ -179,14 +179,14 @@ export default function AIAssistant() {
                 >
                   <div className={`flex max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start space-x-2`}>
                     <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      message.role === 'user' ? 'bg-blue-600 text-white ml-2' : 'bg-gray-200 text-gray-600 mr-2'
+                      message.role === 'user' ? 'bg-blue-600 text-white ml-2' : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 mr-2'
                     }`}>
                       {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </div>
                     <div className={`px-4 py-2 rounded-lg ${
                       message.role === 'user' 
                         ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                     }`}>
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       <p className={`text-xs mt-1 ${
@@ -218,29 +218,29 @@ export default function AIAssistant() {
             </div>
 
             {/* Quick Actions */}
-            <div className="px-4 py-2 border-t border-gray-200">
+            <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-600">
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setInput("How do I create a workout?")}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                  className="text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 px-2 py-1 rounded transition-colors"
                 >
                   Create workout
                 </button>
                 <button
                   onClick={() => setInput("How do I add context for better workouts?")}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                  className="text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 px-2 py-1 rounded transition-colors"
                 >
                   Add context
                 </button>
                 <button
                   onClick={() => setInput("What features are available?")}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+                  className="text-xs bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 px-2 py-1 rounded transition-colors"
                 >
                   Features
                 </button>
                 <button
                   onClick={clearHistory}
-                  className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded transition-colors ml-auto"
+                  className="text-xs bg-red-50 dark:bg-red-900 hover:bg-red-100 dark:hover:bg-red-800 text-red-600 dark:text-red-400 px-2 py-1 rounded transition-colors ml-auto"
                 >
                   Clear
                 </button>
@@ -248,7 +248,7 @@ export default function AIAssistant() {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-600">
               <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex space-x-2">
                 <input
                   ref={inputRef}
@@ -256,7 +256,7 @@ export default function AIAssistant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask me anything about workouts..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   disabled={isLoading}
                 />
                 <button

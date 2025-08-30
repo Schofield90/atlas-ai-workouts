@@ -3,14 +3,17 @@ import { createClient } from '@/lib/db/client-fixed'
 // Simplified client service without auth requirements
 export const simpleClientService = {
   async getClients() {
+    console.log('📊 simpleClientService.getClients() called')
     try {
+      console.log('🔧 Creating Supabase client...')
       const supabase = createClient()
       
       if (!supabase || !supabase.from) {
-        console.warn('Supabase client not available')
+        console.warn('⚠️ Supabase client not available - returning empty array')
         return []
       }
       
+      console.log('📡 Querying workout_clients table...')
       // Just get all clients from workout_clients table
       const { data, error } = await supabase
         .from('workout_clients')
@@ -18,13 +21,14 @@ export const simpleClientService = {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching clients:', error)
+        console.error('❌ Database query error:', error)
         return []
       }
 
+      console.log(`✅ Query successful: received ${data?.length || 0} clients`)
       return data || []
     } catch (error) {
-      console.error('Error in getClients:', error)
+      console.error('💥 Exception in getClients:', error)
       return []
     }
   },

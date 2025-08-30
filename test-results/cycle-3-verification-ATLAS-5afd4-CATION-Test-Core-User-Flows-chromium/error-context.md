@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Workout Platform" [level=1] [ref=e7]
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - img [ref=e10]
+            - text: AI Workout Generator (Cloud)
+          - link [ref=e12] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e13] [cursor=pointer]
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Welcome Back" [level=2] [ref=e18]
+        - paragraph [ref=e19]: All data synced to cloud storage
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - img [ref=e23]
+            - generic [ref=e28]: "165"
+          - heading "Total Clients" [level=3] [ref=e29]
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e38]: "0"
+          - heading "Total Workouts" [level=3] [ref=e39]
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - generic [ref=e50]: AI
+          - heading "Powered by AI" [level=3] [ref=e51]
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e56]: 100%
+          - heading "Cloud Synced" [level=3] [ref=e57]
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e61]:
+            - heading "Recent Clients" [level=3] [ref=e62]
+            - link "View All →" [ref=e63] [cursor=pointer]:
+              - /url: /clients
+          - generic [ref=e65]:
+            - link "Zara C" [ref=e66] [cursor=pointer]:
+              - /url: /clients/a3b7d016-350f-443e-8ccb-f751ac4f9a9c
+              - paragraph [ref=e67] [cursor=pointer]: Zara C
+            - link "William W" [ref=e68] [cursor=pointer]:
+              - /url: /clients/fa8e0e6b-cdfa-4dd4-bd43-2e769ddf7431
+              - paragraph [ref=e69] [cursor=pointer]: William W
+            - link "Yusuf O" [ref=e70] [cursor=pointer]:
+              - /url: /clients/c123ad3a-808c-4c58-96da-ce2da8624d22
+              - paragraph [ref=e71] [cursor=pointer]: Yusuf O
+            - link "Aga K" [ref=e72] [cursor=pointer]:
+              - /url: /clients/ffa08967-0bd0-41ec-bdd2-2e89bfb1e299
+              - paragraph [ref=e73] [cursor=pointer]: Aga K
+            - link "Ahmed E" [ref=e74] [cursor=pointer]:
+              - /url: /clients/5ce44685-235f-4b57-b2fb-3d419333422a
+              - paragraph [ref=e75] [cursor=pointer]: Ahmed E
+        - generic [ref=e76]:
+          - generic [ref=e78]:
+            - heading "Recent Workouts" [level=3] [ref=e79]
+            - link "View All →" [ref=e80] [cursor=pointer]:
+              - /url: /workouts
+          - generic [ref=e82]:
+            - img [ref=e83]
+            - paragraph [ref=e89]: No workouts yet
+            - link "Create First Workout" [ref=e90] [cursor=pointer]:
+              - /url: /builder
+              - img [ref=e91] [cursor=pointer]
+              - text: Create First Workout
+      - generic [ref=e92]:
+        - link "Add Client" [ref=e93] [cursor=pointer]:
+          - /url: /clients/new
+          - img [ref=e94] [cursor=pointer]
+          - generic [ref=e95] [cursor=pointer]: Add Client
+        - link "AI Workout" [ref=e96] [cursor=pointer]:
+          - /url: /builder
+          - img [ref=e97] [cursor=pointer]
+          - generic [ref=e105] [cursor=pointer]: AI Workout
+        - link "All Clients" [active] [ref=e106] [cursor=pointer]:
+          - /url: /clients
+          - img [ref=e107] [cursor=pointer]
+          - generic [ref=e112] [cursor=pointer]: All Clients
+        - link "All Workouts" [ref=e113] [cursor=pointer]:
+          - /url: /workouts
+          - img [ref=e114] [cursor=pointer]
+          - generic [ref=e120] [cursor=pointer]: All Workouts
+        - link "SOPs & Context" [ref=e121] [cursor=pointer]:
+          - /url: /context
+          - img [ref=e122] [cursor=pointer]
+          - generic [ref=e130] [cursor=pointer]: SOPs & Context
+  - button "Open AI Assistant" [ref=e131]:
+    - img [ref=e132]
+    - generic [ref=e135]: AI Assistant
+  - button "Open Next.js Dev Tools" [ref=e141] [cursor=pointer]:
+    - img [ref=e142] [cursor=pointer]
+  - alert [ref=e145]
+```

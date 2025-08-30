@@ -19,18 +19,18 @@ export default function LoginPage() {
   })
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <header className="text-center">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Welcome to Your Workout Platform
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Sign in to create personalized AI-powered workouts
           </p>
-        </div>
+        </header>
 
-        <div className="bg-white shadow-xl rounded-lg p-8">
+        <main className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8" role="main" aria-label="Login form">
           <Auth
             supabaseClient={supabase}
             appearance={{
@@ -45,8 +45,8 @@ export default function LoginPage() {
               },
               className: {
                 container: 'auth-container',
-                button: 'auth-button',
-                input: 'auth-input',
+                button: 'auth-button focus:ring-2 focus:ring-blue-500 focus:outline-none',
+                input: 'auth-input focus:ring-2 focus:ring-blue-500 focus:outline-none',
               },
             }}
             providers={[]}
@@ -71,13 +71,13 @@ export default function LoginPage() {
               },
             }}
           />
-        </div>
+        </main>
 
-        <div className="text-center text-sm text-gray-600">
+        <footer className="text-center text-sm text-gray-600 dark:text-gray-400">
           <p>
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            By signing in, you agree to our <a href="#" className="underline hover:text-gray-800 dark:hover:text-gray-200">Terms of Service</a> and <a href="#" className="underline hover:text-gray-800 dark:hover:text-gray-200">Privacy Policy</a>
           </p>
-        </div>
+        </footer>
       </div>
     </div>
   )

@@ -1,0 +1,78 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - heading "Workout Platform" [level=1] [ref=e7]
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - img [ref=e10]
+            - text: AI Workout Generator (Cloud)
+          - link [ref=e12]:
+            - /url: /settings
+            - img [ref=e13]
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Welcome Back" [level=2] [ref=e18]
+        - paragraph [ref=e19]: All data synced to cloud storage
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - img [ref=e23]
+            - generic [ref=e28]: ...
+          - heading "Total Clients" [level=3] [ref=e29]
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e38]: ...
+          - heading "Total Workouts" [level=3] [ref=e39]
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - img [ref=e42]
+            - generic [ref=e50]: AI
+          - heading "Powered by AI" [level=3] [ref=e51]
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e56]: 100%
+          - heading "Cloud Synced" [level=3] [ref=e57]
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e61]:
+            - heading "Recent Clients" [level=3] [ref=e62]
+            - link "View All →" [ref=e63]:
+              - /url: /clients
+          - paragraph [ref=e65]: Loading...
+        - generic [ref=e66]:
+          - generic [ref=e68]:
+            - heading "Recent Workouts" [level=3] [ref=e69]
+            - link "View All →" [ref=e70]:
+              - /url: /workouts
+          - paragraph [ref=e72]: Loading...
+      - generic [ref=e73]:
+        - link "Add Client" [ref=e74]:
+          - /url: /clients/new
+          - img [ref=e75]
+          - generic [ref=e76]: Add Client
+        - link "AI Workout" [ref=e77]:
+          - /url: /builder
+          - img [ref=e78]
+          - generic [ref=e86]: AI Workout
+        - link "All Clients" [ref=e87]:
+          - /url: /clients
+          - img [ref=e88]
+          - generic [ref=e93]: All Clients
+        - link "All Workouts" [ref=e94]:
+          - /url: /workouts
+          - img [ref=e95]
+          - generic [ref=e101]: All Workouts
+        - link "SOPs & Context" [ref=e102]:
+          - /url: /context
+          - img [ref=e103]
+          - generic [ref=e111]: SOPs & Context
+  - button "Open AI Assistant" [ref=e112]:
+    - img [ref=e113]
+    - generic [ref=e115]: AI Assistant
+```

@@ -1,0 +1,57 @@
+# API Endpoints - Atlas AI Workouts Project
+# Updated: 2025-08-30T00:00:00Z
+
+## Workout Generation Endpoints
+
+### POST /api/workouts/generate-simple
+**Purpose**: Generate AI-powered workout based on client data and preferences
+**Method**: POST
+**Content-Type**: application/json
+**Request Body**:
+```typescript
+{
+  title: string,           // Workout name/title
+  clientId: string,        // Client ID or 'guest'
+  client: Client,          // Client object with full_name, goals, etc.
+  duration: number,        // Workout duration in minutes
+  intensity: string,       // 'light' | 'moderate' | 'intense'
+  focus?: string,          // Focus area (optional)
+  equipment?: string[],    // Available equipment array
+  context?: any           // Training context object (optional)
+}
+```
+**Response**:
+```typescript
+{
+  success: boolean,
+  workout: any,           // Generated workout object
+  workoutId: string      // Unique workout identifier
+}
+```
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L115-L128]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L162-L175]
+
+## Database Queries
+
+### Supabase: workout_clients table
+**Query Pattern**: 
+```sql
+SELECT * FROM workout_clients 
+ORDER BY created_at DESC
+```
+**Used for**: Loading client list for workout builder selection
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L49-L52]
+
+## Client-Side Storage
+
+### localStorage Keys
+- `ai-workout-clients`: Client data cache
+- `ai-workout-contexts`: Training context data
+- `ai-workout-workouts`: Generated workout storage
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L75-L82]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L66-L74]
+
+---
+
+**NOTE: No automation/workflow endpoints found** - This project does not implement automation builder or node configuration APIs. All endpoints relate to fitness workout generation.
+[Verified: 2025-08-30T00:00:00Z]

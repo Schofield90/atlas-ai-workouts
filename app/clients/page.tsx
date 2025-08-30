@@ -37,7 +37,11 @@ interface WorkoutClient {
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<WorkoutClient[]>([])
+  
+  // DEBUG: Add a test client to verify rendering works
+  const [debugMode, setDebugMode] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -49,23 +53,104 @@ export default function ClientsPage() {
   const multiSheetInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    loadClients()
+    console.log('🚀 ClientsPage useEffect triggered - calling loadClients()')
+    
+    // Set timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.error('⏱️ Loading timeout - forcing loading state to false')
+        setLoading(false)
+        setConnectionError('Loading timed out. Please check your connection and try refreshing the page.')
+      }
+    }, 10000) // 10 second timeout
+    
+    loadClients().finally(() => {
+      clearTimeout(loadingTimeout)
+    })
+    
+    return () => clearTimeout(loadingTimeout)
   }, [])
 
+  // Monitor clients state changes
+  useEffect(() => {
+    console.log('🔄 Clients state changed:', {
+      length: clients.length,
+      sample: clients[0],
+      timestamp: new Date().toISOString()
+    })
+  }, [clients])
+
   async function loadClients() {
+    console.log('🔄 Starting client load...')
     setLoading(true)
+    setConnectionError(null)
+    
     try {
-      const cloudClients = await clientService.getClients()
-      setClients(cloudClients)
-      console.log(`✅ Loaded ${cloudClients.length} clients from Supabase`)
-      if (cloudClients.length === 0) {
-        console.log('No clients found in database. Ready to add new clients.')
+      console.log('🔗 Testing connection to client service...')
+      
+      // First try using the API endpoint as a fallback to bypass potential Supabase issues
+      let cloudClients
+      let usingFallback = false
+      
+      try {
+        cloudClients = await clientService.getClients()
+        console.log(`✅ Service call successful: ${cloudClients?.length || 0} clients`)
+      } catch (serviceError) {
+        console.error('🚨 Service call failed, trying API fallback:', serviceError)
+        usingFallback = true
+        
+        try {
+          console.log('🔄 Attempting API fallback...')
+          const response = await fetch('/api/clients/test')
+          const apiData = await response.json()
+          
+          if (response.ok && apiData.clients) {
+            cloudClients = apiData.clients
+            console.log(`✅ API fallback successful: ${cloudClients?.length || 0} clients`)
+          } else {
+            throw new Error(`API fallback failed: ${apiData.message || 'Unknown error'}`)
+          }
+        } catch (fetchError) {
+          console.error('💥 Both service and API fallback failed:', fetchError)
+          throw new Error('All data loading methods failed')
+        }
+      }
+      
+      console.log(`📊 Data loading summary:`, {
+        method: usingFallback ? 'API fallback' : 'Direct service',
+        clientCount: cloudClients?.length || 0,
+        dataType: typeof cloudClients,
+        isArray: Array.isArray(cloudClients)
+      })
+      
+      if (Array.isArray(cloudClients) && cloudClients.length > 0) {
+        console.log('🎯 Setting clients state with:', cloudClients.length, 'clients')
+        console.log('🔍 Sample client data:', cloudClients[0])
+        
+        // Ensure React state updates properly
+        setClients(cloudClients)
+        console.log(`✅ State set with ${cloudClients.length} clients`)
+        
+        setImportStatus(null) // Clear any previous error messages
+        console.log(`🚀 Successfully loaded ${cloudClients.length} clients!`)
+      } else if (Array.isArray(cloudClients) && cloudClients.length === 0) {
+        console.log('📝 No clients found in database. Ready to add new clients.')
+        setClients([])
+        setImportStatus({ type: 'info', message: 'No clients found. Click "Add Client" or import data to get started.' })
+      } else {
+        console.error('❌ Invalid data format received:', typeof cloudClients, cloudClients)
+        setClients([])
+        setConnectionError('Invalid response from server')
+        setImportStatus({ type: 'error', message: 'Invalid data format received from database' })
       }
     } catch (error) {
-      console.error('Error loading clients:', error)
-      setImportStatus({ type: 'error', message: `Error: ${error instanceof Error ? error.message : 'Failed to load clients'}` })
+      console.error('❌ Exception in loadClients:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setConnectionError(`Failed to connect to database: ${errorMessage}`)
+      setImportStatus({ type: 'error', message: `Database connection error: ${errorMessage}. Please check your internet connection and try refreshing.` })
       setClients([]) // Set empty array on error
     } finally {
+      console.log('✅ Setting loading to false')
       setLoading(false)
     }
   }
@@ -894,15 +979,81 @@ Check browser console for full analysis.`
     URL.revokeObjectURL(url)
   }
 
-  const filteredClients = clients.filter(client =>
+  // DEBUG: Create test clients to verify rendering
+  const testClients = debugMode ? [
+    {
+      id: 'test-1',
+      full_name: 'TEST Client 1',
+      email: 'test@example.com',
+      phone: '123-456-7890',
+      age: 25,
+      sex: 'M',
+      height_cm: 180,
+      weight_kg: 75,
+      goals: 'Build muscle',
+      injuries: 'None',
+      equipment: ['dumbbells'],
+      preferences: {},
+      notes: 'Test client for debugging',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as WorkoutClient,
+    {
+      id: 'test-2', 
+      full_name: 'TEST Client 2',
+      email: 'test2@example.com',
+      phone: '987-654-3210',
+      age: 30,
+      sex: 'F',
+      height_cm: 165,
+      weight_kg: 60,
+      goals: 'Lose weight',
+      injuries: 'Knee injury',
+      equipment: ['treadmill'],
+      preferences: {},
+      notes: 'Another test client',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as WorkoutClient
+  ] : []
+  
+  const activeClients = debugMode ? testClients : clients
+  const filteredClients = activeClients.filter(client =>
     client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.phone?.includes(searchTerm)
   )
+  
+  // Debug logging for client state and filtering
+  console.log('🔍 Client state debug:', { 
+    clientsLength: clients.length, 
+    activeClientsLength: activeClients.length,
+    filteredClientsLength: filteredClients.length,
+    debugMode,
+    searchTerm,
+    loading,
+    connectionError,
+    sampleClient: clients[0],
+    sampleActiveClient: activeClients[0]
+  })
 
-  if (loading && clients.length === 0) {
+  // Show loading spinner only when actually loading
+  if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-6">
+        <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white p-8 rounded-xl mb-6 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Users className="w-8 h-8" />
+                <h1 className="text-3xl font-bold">Clients (Cloud Storage)</h1>
+              </div>
+              <p className="text-purple-100">
+                Loading your client database from Supabase cloud...
+              </p>
+            </div>
+          </div>
+        </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
           <span className="ml-2">Loading clients from cloud...</span>
@@ -925,7 +1076,7 @@ Check browser console for full analysis.`
             </p>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-bold">{clients.length}</div>
+            <div className="text-4xl font-bold">{activeClients.length}</div>
             <div className="text-purple-200">Total Clients</div>
           </div>
         </div>
@@ -1004,11 +1155,32 @@ Check browser console for full analysis.`
             </button>
             <button
               onClick={exportCSV}
-              disabled={clients.length === 0}
+              disabled={activeClients.length === 0}
               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 flex items-center gap-2 disabled:opacity-50"
             >
               <Download className="w-5 h-5" />
               Export
+            </button>
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                debugMode 
+                  ? 'bg-red-600 text-white hover:bg-red-500' 
+                  : 'bg-yellow-600 text-white hover:bg-yellow-500'
+              }`}
+              title={debugMode ? 'Disable debug mode (show real data)' : 'Enable debug mode (show test data)'}
+            >
+              <AlertCircle className="w-5 h-5" />
+              {debugMode ? 'Debug: ON' : 'Debug Test'}
+            </button>
+            <button
+              onClick={loadClients}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 flex items-center gap-2 disabled:opacity-50"
+              title="Manually reload clients from database"
+            >
+              <Loader2 className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              Reload Data
             </button>
           </div>
         </div>
@@ -1140,7 +1312,22 @@ Check browser console for full analysis.`
 
           {filteredClients.length === 0 && (
             <div className="text-center py-12 text-gray-500">
-              {searchTerm ? 'No clients found matching your search' : 'No clients yet. Add your first client to get started!'}
+              {connectionError ? (
+                <div>
+                  <p className="text-red-400 mb-4">🔌 Connection Error</p>
+                  <p className="text-sm mb-4">{connectionError}</p>
+                  <button 
+                    onClick={loadClients}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
+                  >
+                    🔄 Retry Connection
+                  </button>
+                </div>
+              ) : searchTerm ? (
+                'No clients found matching your search'
+              ) : (
+                'No clients yet. Add your first client to get started!'
+              )}
             </div>
           )}
         </div>

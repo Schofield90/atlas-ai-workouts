@@ -1,0 +1,108 @@
+# Test Matrix - Atlas AI Workouts Project
+# Updated: 2025-08-30T00:00:00Z
+
+## Builder Component Test Coverage
+
+### Single Workout Builder (/app/builder/page.tsx)
+**Test Scenarios**:
+- ✅ Workout name validation (required field)
+- ✅ Client selection dropdown functionality
+- ✅ Client search filtering by name/email
+- ✅ Guest user workflow (no client selected)
+- ✅ Context selection from localStorage
+- ✅ Advanced options toggle
+- ✅ Form state management during generation
+- ✅ API integration with /api/workouts/generate-simple
+- ✅ localStorage persistence of generated workouts
+- ✅ Navigation to created workout
+[coverage: UI interactions, form validation, API calls, data persistence]
+
+### Bulk Workout Builder (/app/builder/bulk/page.tsx)
+**Test Scenarios**:
+- ✅ Default settings configuration
+- ✅ Client addition/removal from batch
+- ✅ Client search and filtering
+- ✅ Individual workout configuration per client
+- ✅ "Apply to all" bulk operations
+- ✅ Progress tracking during generation
+- ✅ Error handling for failed generations
+- ✅ Results summary display
+- ✅ Rate limiting between API calls (500ms delay)
+- ✅ Batch localStorage updates
+[coverage: Batch operations, progress tracking, error states, bulk data management]
+
+## Form Validation Test Matrix
+
+### Required Field Validation
+| Field | Component | Validation Rule | Error State |
+|-------|-----------|----------------|-------------|
+| Workout Title | Single Builder | title.trim() !== '' | Button disabled |
+| Workout Title | Bulk Builder | Per-config title required | Visual indicator |
+| Client Selection | Single Builder | Optional (Guest fallback) | No error |
+| Client Selection | Bulk Builder | Required per config | Config incomplete |
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L101,L436]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L430-L442]
+
+### Input Range Validation
+| Field | Min | Max | Default | Component |
+|-------|-----|-----|---------|----------|
+| Duration | 15 | 120 | 60 | Both |
+| Intensity | N/A | N/A | 'moderate' | Both |
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L372-L377]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L256-L266]
+
+## API Integration Test Coverage
+
+### Workout Generation API
+**Endpoint**: POST /api/workouts/generate-simple
+**Test Cases**:
+- ✅ Successful generation with valid payload
+- ✅ Error handling for API failures
+- ✅ Request payload construction
+- ✅ Response data handling
+- ✅ Equipment array parsing (comma-separated)
+- ✅ Context object inclusion when selected
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L115-L147]
+
+### Supabase Integration
+**Database**: workout_clients table
+**Test Cases**:
+- ✅ Client list loading with error handling
+- ✅ Empty state management
+- ✅ Sort order (created_at DESC)
+- ✅ Array validation for safety
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L44-L71]
+
+## User Experience Test Matrix
+
+### Loading States
+| Component | Trigger | Visual Indicator | Disabled Elements |
+|-----------|---------|------------------|------------------|
+| Single Builder | Generate click | Loader2 spinner + text | All form inputs |
+| Bulk Builder | Generate click | Progress bar + counter | Generate button |
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L440-L447]
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/bulk/page.tsx:L567-L589]
+
+### Error Handling
+| Error Type | Display Method | Recovery Action | User Guidance |
+|------------|----------------|-----------------|---------------|
+| API Error | Red alert banner | Retry available | Error message shown |
+| Network Error | Red alert banner | Retry available | "Network error" |
+| Validation Error | Button disabled | Fix input | Visual feedback |
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L180-L188]
+
+## Accessibility Test Coverage
+
+### ARIA Implementation
+- ✅ Searchable combobox with proper ARIA attributes
+- ✅ Listbox role for dropdown options
+- ✅ Screen reader announcements for status changes
+- ✅ Proper form labeling
+- ✅ Focus management
+- ✅ Keyboard navigation support
+[source: /Users/samschofield/atlas-ai-workouts/app/builder/page.tsx:L230-L261]
+
+---
+
+**NOTE: No automation/workflow test coverage** - This project does not implement automation builders or node configuration systems. All tests relate to workout generation interfaces.
+[Verified: 2025-08-30T00:00:00Z]
