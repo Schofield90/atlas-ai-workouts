@@ -104,24 +104,6 @@ export default function BuilderPage() {
       }
     } catch (error) {
       console.error('Error loading SOPs from API:', error)
-          }
-          validContexts.unshift(sopContext)
-        }
-      }
-      
-      setContexts(validContexts)
-      
-      // Select the most recent context by default
-      if (validContexts.length > 0 && !selectedContext) {
-        const sortedContexts = [...validContexts].sort((a, b) => {
-          const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
-          const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
-          return dateB - dateA
-        })
-        setSelectedContext(sortedContexts[0])
-      }
-    } catch (error) {
-      console.error('Error loading contexts:', error)
       setContexts([])
       setSelectedContext(null)
     }
