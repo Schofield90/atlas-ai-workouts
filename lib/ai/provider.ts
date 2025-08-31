@@ -70,12 +70,18 @@ export class AIClient {
   }
 
   constructor() {
+    console.log('=== AI Provider Initialization ===')
+    console.log('Anthropic key exists:', !!process.env.ANTHROPIC_API_KEY)
+    console.log('OpenAI key exists:', !!process.env.OPENAI_API_KEY)
+    console.log('OpenAI key length:', process.env.OPENAI_API_KEY?.length || 0)
+    
     if (process.env.ANTHROPIC_API_KEY) {
       try {
         this.anthropic = new Anthropic({
           apiKey: process.env.ANTHROPIC_API_KEY,
         })
         this.provider = 'anthropic'
+        console.log('✅ Anthropic initialized successfully')
       } catch (error) {
         console.warn('Failed to initialize Anthropic:', error)
       }
@@ -87,15 +93,18 @@ export class AIClient {
           apiKey: process.env.OPENAI_API_KEY,
         })
         this.provider = 'openai'
+        console.log('✅ OpenAI initialized successfully')
       } catch (error) {
-        console.warn('Failed to initialize OpenAI:', error)
+        console.warn('❌ Failed to initialize OpenAI:', error)
       }
     }
     
     // Don't throw error, allow fallback mode
     if (!this.anthropic && !this.openai) {
-      console.warn('No AI provider configured - using fallback mode')
+      console.warn('⚠️ No AI provider configured - using fallback mode')
     }
+    
+    console.log('Final provider:', this.provider)
   }
 
   async generateText(
@@ -127,23 +136,37 @@ export class AIClient {
         },
       }
     } else if (this.provider === 'openai' && this.openai) {
-      const response = await this.openai.chat.completions.create({
-        model: process.env.GEN_MODEL || 'gpt-4-turbo-preview',
-        temperature,
-        max_tokens: maxTokens,
-        response_format: options?.jsonMode ? { type: 'json_object' } : undefined,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      })
-
-      return {
-        content: response.choices[0].message.content || '',
-        usage: {
-          input_tokens: response.usage?.prompt_tokens || 0,
-          output_tokens: response.usage?.completion_tokens || 0,
-        },
+      try {
+        console.log('Calling OpenAI API...')
+        console.log('Model:', process.env.GEN_MODEL || 'gpt-4-turbo-preview')
+        const response = await this.openai.chat.completions.create({
+          model: process.env.GEN_MODEL || 'gpt-4-turbo-preview',
+          temperature,
+          max_tokens: maxTokens,
+          response_format: options?.jsonMode ? { type: 'json_object' } : undefined,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        })
+        
+        console.log('OpenAI API call successful')
+        return {
+          content: response.choices[0].message.content || '',
+          usage: {
+            input_tokens: response.usage?.prompt_tokens || 0,
+            output_tokens: response.usage?.completion_tokens || 0,
+          },
+        }
+      } catch (error: any) {
+        console.error('❌ OpenAI API call failed:', error.message || error)
+        console.error('Error details:', {
+          status: error.status,
+          code: error.code,
+          type: error.type,
+          message: error.message
+        })
+        throw error // Re-throw to trigger fallback in route
       }
     }
 
