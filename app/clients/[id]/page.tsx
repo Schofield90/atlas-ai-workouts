@@ -7,12 +7,13 @@ export const dynamic = 'force-dynamic'
 export default async function ClientPage({ 
   params 
 }: { 
-  params: { id: string } 
+  params: Promise<{ id: string }>
 }) {
+  const resolvedParams = await params
   const supabase = createClient()
   
   // Clean the ID if needed
-  const clientId = params.id.substring(0, 36)
+  const clientId = resolvedParams.id.substring(0, 36)
   
   // Fetch client data on the server
   const { data: client, error } = await supabase
