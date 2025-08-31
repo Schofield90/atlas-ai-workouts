@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation'
 import ClientDetailView from './client-detail-view'
 
+// Force this route to be dynamic
+export const dynamic = 'force-dynamic'
+
 // Server component to fetch data
 async function getClient(id: string) {
   try {
