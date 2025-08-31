@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, ChevronDown, ChevronUp, Dumbbell, Search, X, Users } from 'lucide-react'
-import { createClient } from '@/lib/db/client-fixed'
 
 export default function BuilderPage() {
   const router = useRouter()
@@ -153,12 +152,12 @@ export default function BuilderPage() {
         console.warn('⚠️ Using fallback workout - AI generation may have failed')
       }
 
-      // Save workout to Supabase
+      // Save workout to database via API
       try {
-        const supabase = createClient()
-        const { data: savedWorkout, error: saveError } = await supabase
-          .from('workout_sessions')
-          .insert({
+        const saveResponse = await fetch('/api/workouts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             id: data.workoutId,
             title: title || 'Untitled Workout',
             plan: data.workout.plan,
@@ -166,13 +165,14 @@ export default function BuilderPage() {
             source: data.workout.source || 'ai',
             version: data.workout.version || 1
           })
-          .select()
-          .single()
+        })
         
-        if (saveError) {
-          console.error('Error saving workout to database:', saveError)
+        const saveResult = await saveResponse.json()
+        
+        if (!saveResponse.ok) {
+          console.error('Error saving workout to database:', saveResult)
         } else {
-          console.log('Workout saved to database:', savedWorkout)
+          console.log('Workout saved to database:', saveResult)
         }
       } catch (saveErr) {
         console.error('Failed to save workout to database:', saveErr)
