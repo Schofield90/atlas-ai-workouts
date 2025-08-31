@@ -3,6 +3,19 @@ import { AIClient } from '@/lib/ai/provider'
 import { WORKOUT_SYSTEM_PROMPT } from '@/lib/ai/prompting'
 import { WorkoutPlanSchema } from '@/lib/ai/schema'
 
+// Handle GET requests (for debugging)
+export async function GET(request: NextRequest) {
+  return NextResponse.json({
+    error: 'This endpoint only accepts POST requests',
+    message: 'Use POST to generate workouts',
+    debug: {
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      hasAnthropic: !!process.env.ANTHROPIC_API_KEY,
+      method: 'GET received, POST required'
+    }
+  }, { status: 405 })
+}
+
 // Helper function to get appropriate exercises based on focus
 function getFallbackExercises(focus: string, equipment: string[] = []) {
   const focusLower = focus.toLowerCase()

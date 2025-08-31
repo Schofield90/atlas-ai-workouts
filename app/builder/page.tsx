@@ -193,7 +193,15 @@ export default function BuilderPage() {
       const data = await response.json()
       
       if (!response.ok) {
+        console.error('Workout generation failed:', data)
         throw new Error(data.error || 'Failed to generate workout')
+      }
+
+      console.log('Workout generated successfully:', data.workoutId)
+      
+      // Check if we got a fallback workout
+      if (data.workout?.source === 'fallback') {
+        console.warn('⚠️ Using fallback workout - AI generation may have failed')
       }
 
       // Save workout to localStorage
@@ -202,8 +210,10 @@ export default function BuilderPage() {
       localStorage.setItem('ai-workout-workouts', JSON.stringify(existingWorkouts))
 
       // Navigate to the created workout
+      setGenerating(false)
       router.push(`/workouts/${data.workoutId}`)
     } catch (err: any) {
+      console.error('Error generating workout:', err)
       setError(err.message || 'Failed to generate workout')
       setGenerating(false)
     }
