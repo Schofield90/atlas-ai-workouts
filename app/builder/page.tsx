@@ -162,7 +162,7 @@ export default function BuilderPage() {
             id: data.workoutId,
             title: title || 'Untitled Workout',
             plan: data.workout.plan,
-            client_id: selectedClient?.id || null,
+            client_id: selectedClient || null,
             source: data.workout.source || 'ai',
             version: data.workout.version || 1
           })
