@@ -27,7 +27,7 @@ export async function GET() {
         }, { status: 500 })
       }
       
-      const invalidIds = (clients || []).filter(c => {
+      const invalidIds = (clients || []).filter((c: any) => {
         return c.id.length !== 36 || 
                !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c.id)
       })
@@ -36,7 +36,7 @@ export async function GET() {
         .from('workout_sessions')
         .select('id, client_id')
       
-      const invalidSessionIds = (sessions || []).filter(s => {
+      const invalidSessionIds = (sessions || []).filter((s: any) => {
         if (!s.client_id) return false
         return s.client_id.length !== 36 || 
                !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.client_id)
@@ -49,7 +49,7 @@ export async function GET() {
           workout_clients: {
             total: clients?.length || 0,
             invalid: invalidIds.length,
-            invalidIds: invalidIds.map(c => ({
+            invalidIds: invalidIds.map((c: any) => ({
               id: c.id,
               name: c.full_name,
               length: c.id.length
@@ -58,7 +58,7 @@ export async function GET() {
           workout_sessions: {
             total: sessions?.length || 0,
             invalid: invalidSessionIds.length,
-            invalidIds: invalidSessionIds.map(s => ({
+            invalidIds: invalidSessionIds.map((s: any) => ({
               id: s.id,
               client_id: s.client_id,
               length: s.client_id?.length
