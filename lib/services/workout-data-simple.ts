@@ -1,18 +1,5 @@
 import { createClient } from '@/lib/db/client-fixed'
-
-// UUID validation regex
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-// Helper to validate and clean UUIDs
-function validateUUID(id: string): string {
-  // Remove any extra characters and validate
-  const cleanId = id.substring(0, 36)
-  if (UUID_REGEX.test(cleanId)) {
-    return cleanId
-  }
-  console.warn(`Invalid UUID detected: ${id}, cleaned to: ${cleanId}`)
-  return cleanId
-}
+import { validateAndCleanUUID, sanitizeClientData, monitorUUIDIssue } from '@/lib/utils/uuid-validator'
 
 // Simplified client service without auth requirements
 export const simpleClientService = {
@@ -42,10 +29,14 @@ export const simpleClientService = {
       console.log(`✅ Query successful: received ${data?.length || 0} clients`)
       
       // Clean any invalid UUIDs in the data
-      const cleanedData = (data || []).map((client: any) => ({
-        ...client,
-        id: validateUUID(client.id)
-      }))
+      const cleanedData = (data || []).map((client: any) => {
+        const sanitized = sanitizeClientData(client)
+        const validation = validateAndCleanUUID(client.id)
+        if (!validation.isValid) {
+          monitorUUIDIssue('getClients', client.id, validation)
+        }
+        return sanitized
+      })
       
       return cleanedData
     } catch (error) {
@@ -132,13 +123,18 @@ export const simpleClientService = {
     try {
       const supabase = createClient()
       
-      // Clean the ID before querying
-      const cleanId = validateUUID(id)
+      // Validate and clean the ID before querying
+      const validation = validateAndCleanUUID(id)
+      if (!validation.isValid || !validation.cleanedId) {
+        monitorUUIDIssue('getClient', id, validation)
+        console.error('Invalid client ID:', validation.error)
+        return null
+      }
       
       const { data, error } = await supabase
         .from('workout_clients')
         .select('*')
-        .eq('id', cleanId)
+        .eq('id', validation.cleanedId)
         .single()
 
       if (error) {
@@ -146,7 +142,8 @@ export const simpleClientService = {
         return null
       }
 
-      return data
+      // Sanitize the returned data
+      return sanitizeClientData(data)
     } catch (error) {
       console.error('Error in getClient:', error)
       return null

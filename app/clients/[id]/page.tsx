@@ -17,6 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { createClient } from '@/lib/db/client-fixed'
+import { validateAndCleanUUID, monitorUUIDIssue } from '@/lib/utils/uuid-validator'
 
 interface Client {
   id: string
@@ -68,8 +69,15 @@ export default function ClientPage() {
       setLoading(true)
       setError('')
       
-      // Clean the client ID (remove any extra characters)
-      const cleanClientId = clientId.substring(0, 36)
+      // Validate and clean the client ID
+      const validation = validateAndCleanUUID(clientId)
+      if (!validation.isValid || !validation.cleanedId) {
+        monitorUUIDIssue('ClientPage.loadClientData', clientId, validation)
+        setError('Invalid client ID format')
+        return
+      }
+      
+      const cleanClientId = validation.cleanedId
       console.log('Loading client with ID:', cleanClientId, 'Original:', clientId)
       
       // Load client from Supabase
@@ -116,8 +124,14 @@ export default function ClientPage() {
     if (!client || !confirm('Are you sure you want to delete this client?')) return
     
     try {
-      // Clean the client ID
-      const cleanClientId = clientId.substring(0, 36)
+      // Validate and clean the client ID
+      const validation = validateAndCleanUUID(clientId)
+      if (!validation.isValid || !validation.cleanedId) {
+        setError('Invalid client ID')
+        return
+      }
+      
+      const cleanClientId = validation.cleanedId
       
       const supabase = createClient()
       const { error } = await supabase
