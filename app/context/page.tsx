@@ -80,13 +80,6 @@ export default function ContextPage() {
       console.error('Error saving to API:', error)
       setMessage({ type: 'error', text: 'Failed to save SOP to database' })
     }
-
-    const updatedSops = [...sops, sop]
-    setSops(updatedSops)
-    localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
-    
-    setNewSop({ title: '', content: '', category: 'general' })
-    setMessage({ type: 'success', text: 'SOP saved locally! Note: Database storage not available.' })
     setSaving(false)
   }
 
