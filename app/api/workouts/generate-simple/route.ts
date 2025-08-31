@@ -278,22 +278,27 @@ Generate a complete workout plan as JSON with this exact structure:
   } catch (error) {
     console.error('Workout generation error:', error)
     
-    // Return a basic workout that still respects the focus
-    console.error('Critical error, using emergency fallback for focus:', body.focus)
+    // We can't access body here, so we return a basic fallback
+    console.error('Critical error, using emergency fallback workout')
     const fallbackWorkout = {
       id: `workout-${Date.now()}`,
-      title: title || 'Workout',
+      title: 'Emergency Workout',
       plan: {
         blocks: [
           {
-            title: `${body.focus || 'Full Body'} Workout`,
-            exercises: getFallbackExercises(body.focus || 'full body', body.equipment || [])
+            title: 'Full Body Workout',
+            exercises: [
+              { name: 'Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 },
+              { name: 'Squats', sets: 3, reps: '15-20', rest_seconds: 60 },
+              { name: 'Plank', sets: 3, time_seconds: 30, rest_seconds: 45 },
+              { name: 'Lunges', sets: 3, reps: '10 each leg', rest_seconds: 60 }
+            ]
           }
         ],
-        training_goals: [`${body.focus || 'General'} training`],
-        total_time_minutes: body.duration || 60
+        training_goals: ['General fitness'],
+        total_time_minutes: 60
       },
-      clients: body.client || { full_name: 'Guest User' },
+      clients: { full_name: 'Guest User' },
       source: 'fallback',
       created_at: new Date().toISOString()
     }
