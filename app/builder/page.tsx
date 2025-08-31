@@ -70,7 +70,37 @@ export default function BuilderPage() {
     }
   }
 
-  function loadContexts() {
+  async function loadContexts() {
+    try {
+      // First try to load SOPs from API
+      const response = await fetch('/api/sops')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.sops && data.sops.length > 0) {
+          // Convert SOPs to context format
+          const sopContext = {
+            id: 'sops-context',
+            name: 'SOPs & Training Methods',
+            documents: data.sops.map((sop: any) => ({
+              id: sop.id,
+              name: sop.title,
+              content: sop.content,
+              category: sop.category
+            })),
+            textSections: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+          setContexts([sopContext])
+          setSelectedContext(sopContext)
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Error loading SOPs from API:', error)
+    }
+    
+    // Fallback to localStorage contexts
     try {
       const saved = localStorage.getItem('ai-workout-contexts')
       const savedContexts = saved ? JSON.parse(saved) : []
@@ -79,14 +109,37 @@ export default function BuilderPage() {
         documents: Array.isArray(ctx.documents) ? ctx.documents : [],
         textSections: Array.isArray(ctx.textSections) ? ctx.textSections : []
       }))
+      
+      // Also check for SOPs in localStorage
+      const localSops = localStorage.getItem('workout-sops')
+      if (localSops) {
+        const sops = JSON.parse(localSops)
+        if (sops.length > 0) {
+          const sopContext = {
+            id: 'local-sops-context',
+            name: 'Local SOPs',
+            documents: sops.map((sop: any) => ({
+              id: sop.id,
+              name: sop.title,
+              content: sop.content,
+              category: sop.category
+            })),
+            textSections: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+          validContexts.unshift(sopContext)
+        }
+      }
+      
       setContexts(validContexts)
       
-      // Select the most recent context by default (sort by updated_at or created_at)
+      // Select the most recent context by default
       if (validContexts.length > 0 && !selectedContext) {
         const sortedContexts = [...validContexts].sort((a, b) => {
           const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
           const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
-          return dateB - dateA // Most recent first
+          return dateB - dateA
         })
         setSelectedContext(sortedContexts[0])
       }

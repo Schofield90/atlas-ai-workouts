@@ -19,7 +19,18 @@ export default function WorkoutPage({
     async function loadWorkout() {
       try {
         setLoading(true)
-        // Load workout from Supabase
+        
+        // First try to load from localStorage
+        const localWorkouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
+        const localWorkout = localWorkouts.find((w: any) => w.id === id)
+        
+        if (localWorkout) {
+          setWorkout(localWorkout)
+          setLoading(false)
+          return
+        }
+        
+        // If not in localStorage, try Supabase
         const supabase = createClient()
         const { data: foundWorkout, error } = await supabase
           .from('workout_sessions')
@@ -37,7 +48,7 @@ export default function WorkoutPage({
           .single()
         
         if (error || !foundWorkout) {
-          console.error('Workout not found:', id, error)
+          console.error('Workout not found in localStorage or database:', id, error)
           router.push('/dashboard')
           return
         }

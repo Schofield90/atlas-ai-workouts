@@ -28,11 +28,5 @@
         }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/gym-coach-platform/$1"
-    }
   ]
 }

@@ -34,14 +34,29 @@ export default function ContextPage() {
     loadSops()
   }, [])
 
-  function loadSops() {
+  async function loadSops() {
+    try {
+      // Try to load from API first
+      const response = await fetch('/api/sops')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.sops && data.sops.length > 0) {
+          setSops(data.sops)
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Error loading SOPs from API:', error)
+    }
+    
+    // Fallback to localStorage
     const saved = localStorage.getItem('workout-sops')
     if (saved) {
       setSops(JSON.parse(saved))
     }
   }
 
-  function saveSop() {
+  async function saveSop() {
     if (!newSop.title || !newSop.content) {
       setMessage({ type: 'error', text: 'Please fill in both title and content' })
       return
@@ -49,6 +64,32 @@ export default function ContextPage() {
 
     setSaving(true)
     
+    try {
+      // Try to save to API first
+      const response = await fetch('/api/sops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSop)
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.sop) {
+          const updatedSops = [...sops, data.sop]
+          setSops(updatedSops)
+          // Also save to localStorage as backup
+          localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
+          setNewSop({ title: '', content: '', category: 'general' })
+          setMessage({ type: 'success', text: 'SOP saved to database! The AI will use this context when generating workouts.' })
+          setSaving(false)
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Error saving to API:', error)
+    }
+    
+    // Fallback to localStorage only
     const sop: SOP = {
       id: Date.now().toString(),
       title: newSop.title,
@@ -62,17 +103,35 @@ export default function ContextPage() {
     localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
     
     setNewSop({ title: '', content: '', category: 'general' })
-    setMessage({ type: 'success', text: 'SOP saved successfully! The AI will use this context when generating workouts.' })
+    setMessage({ type: 'success', text: 'SOP saved locally! Note: Database storage not available.' })
     setSaving(false)
   }
 
-  function deleteSop(id: string) {
+  async function deleteSop(id: string) {
     if (!confirm('Are you sure you want to delete this SOP?')) return
     
+    try {
+      // Try to delete from API
+      const response = await fetch(`/api/sops?id=${id}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        const updatedSops = sops.filter(s => s.id !== id)
+        setSops(updatedSops)
+        localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
+        setMessage({ type: 'success', text: 'SOP deleted from database' })
+        return
+      }
+    } catch (error) {
+      console.error('Error deleting from API:', error)
+    }
+    
+    // Fallback to localStorage only
     const updatedSops = sops.filter(s => s.id !== id)
     setSops(updatedSops)
     localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
-    setMessage({ type: 'success', text: 'SOP deleted' })
+    setMessage({ type: 'success', text: 'SOP deleted locally' })
   }
 
   const categoryColors = {
