@@ -17,6 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { createClient } from '@/lib/db/client-fixed'
+import { validateAndCleanUUID, monitorUUIDIssue } from '@/lib/utils/uuid-validator'
 
 interface Client {
   id: string
@@ -52,10 +53,7 @@ interface Workout {
 export default function ClientPage() {
   const params = useParams()
   const router = useRouter()
-  const rawClientId = params.id as string
-  
-  // Clean the client ID immediately
-  const clientId = rawClientId ? rawClientId.substring(0, 36) : ''
+  const clientId = params.id as string
   
   const [client, setClient] = useState<Client | null>(null)
   const [workouts, setWorkouts] = useState<Workout[]>([])
@@ -63,35 +61,31 @@ export default function ClientPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!clientId) {
-      setError('Invalid client ID')
-      setLoading(false)
-      return
-    }
-
-    // Check if we need to redirect due to malformed ID
-    if (rawClientId && rawClientId.length > 36) {
-      console.log('Redirecting from malformed ID:', rawClientId, 'to:', clientId)
-      router.replace(`/clients/${clientId}`)
-      return
-    }
-
     loadClientData()
-  }, [clientId, rawClientId])
+  }, [clientId])
 
   async function loadClientData() {
     try {
       setLoading(true)
       setError('')
       
-      console.log('Loading client with ID:', clientId)
+      // Validate and clean the client ID
+      const validation = validateAndCleanUUID(clientId)
+      if (!validation.isValid || !validation.cleanedId) {
+        monitorUUIDIssue('ClientPage.loadClientData', clientId, validation)
+        setError('Invalid client ID format')
+        return
+      }
+      
+      const cleanClientId = validation.cleanedId
+      console.log('Loading client with ID:', cleanClientId, 'Original:', clientId)
       
       // Load client from Supabase
       const supabase = createClient()
       const { data: foundClient, error: clientError } = await supabase
         .from('workout_clients')
         .select('*')
-        .eq('id', clientId)
+        .eq('id', cleanClientId)
         .single()
       
       if (clientError) {
@@ -107,7 +101,7 @@ export default function ClientPage() {
         const { data: clientWorkouts, error: workoutsError } = await supabase
           .from('workout_sessions')
           .select('id, title, description, workout_type, difficulty, created_at, client_id')
-          .eq('client_id', clientId)
+          .eq('client_id', cleanClientId)
           .order('created_at', { ascending: false })
         
         if (workoutsError) {
@@ -130,11 +124,20 @@ export default function ClientPage() {
     if (!client || !confirm('Are you sure you want to delete this client?')) return
     
     try {
+      // Validate and clean the client ID
+      const validation = validateAndCleanUUID(clientId)
+      if (!validation.isValid || !validation.cleanedId) {
+        setError('Invalid client ID')
+        return
+      }
+      
+      const cleanClientId = validation.cleanedId
+      
       const supabase = createClient()
       const { error } = await supabase
         .from('workout_clients')
         .delete()
-        .eq('id', clientId)
+        .eq('id', cleanClientId)
 
       if (error) {
         console.error('Error deleting client:', error)
