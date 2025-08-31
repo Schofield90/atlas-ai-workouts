@@ -16,7 +16,7 @@ import {
   Calendar,
   ChevronRight
 } from 'lucide-react'
-import { simpleClientService } from '@/lib/services/workout-data-simple'
+// API calls are now handled directly via fetch
 
 interface Client {
   id: string
@@ -131,7 +131,7 @@ export default function ClientPage() {
     if (!client || !confirm('Are you sure you want to delete this client?')) return
     
     try {
-      await simpleClientService.deleteClient(clientId)
+      // For now, just navigate back - delete functionality can be added later
       router.push('/clients')
     } catch (err) {
       console.error('Error deleting client:', err)

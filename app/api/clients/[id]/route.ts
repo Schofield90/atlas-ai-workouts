@@ -1,9 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Direct Supabase connection with hardcoded values for reliability
-const supabaseUrl = 'https://lzlrojoaxrqvmhempnkn.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6bHJvam9heHJxdm1oZW1wbmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0OTI1MzksImV4cCI6MjA2ODA2ODUzOX0.8rGsdaYcnwFIyWEhKKqz-W-KsOAP6WRTuEv8UrzkKuc'
 
 export async function GET(
   request: NextRequest,
@@ -17,32 +12,40 @@ export async function GET(
     // Clean the ID - take only first 36 characters (UUID length)
     const cleanId = clientId.substring(0, 36)
     
-    // Create direct Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    // Use direct fetch to Supabase REST API
+    const supabaseUrl = 'https://lzlrojoaxrqvmhempnkn.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6bHJvam9heHJxdm1oZW1wbmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0OTI1MzksImV4cCI6MjA2ODA2ODUzOX0.8rGsdaYcnwFIyWEhKKqz-W-KsOAP6WRTuEv8UrzkKuc'
     
-    // Fetch the client
-    const { data, error } = await supabase
-      .from('workout_clients')
-      .select('*')
-      .eq('id', cleanId)
-      .single()
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/workout_clients?id=eq.${cleanId}&select=*`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        }
+      }
+    )
     
-    if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json(
-        { error: 'Client not found', details: error.message },
-        { status: 404 }
-      )
-    }
-    
-    if (!data) {
+    if (!response.ok) {
+      console.error('Supabase error:', response.status, response.statusText)
       return NextResponse.json(
         { error: 'Client not found' },
         { status: 404 }
       )
     }
     
-    return NextResponse.json(data)
+    const data = await response.json()
+    
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { error: 'Client not found' },
+        { status: 404 }
+      )
+    }
+    
+    return NextResponse.json(data[0])
   } catch (error) {
     console.error('API error:', error)
     return NextResponse.json(
