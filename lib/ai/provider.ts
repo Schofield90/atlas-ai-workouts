@@ -16,6 +16,59 @@ export class AIClient {
   private openai?: OpenAI
   private provider: AIProvider = 'fallback'
 
+  private getFallbackExercisesForFocus(focus: string) {
+    const focusLower = focus.toLowerCase()
+    
+    if (focusLower.includes('bicep') && focusLower.includes('tricep')) {
+      return [
+        { name: 'Diamond Push-ups', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Chin-ups (underhand grip)', sets: 3, reps: '8-10', rest_seconds: 90 },
+        { name: 'Tricep Dips (using chair)', sets: 3, reps: '12-15', rest_seconds: 60 },
+        { name: 'Pike Push-ups', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Close-Grip Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 },
+        { name: 'Isometric Bicep Hold', sets: 3, time_seconds: 30, rest_seconds: 45 }
+      ]
+    } else if (focusLower.includes('bicep')) {
+      return [
+        { name: 'Chin-ups (underhand grip)', sets: 4, reps: '8-12', rest_seconds: 90 },
+        { name: 'Isometric Bicep Hold', sets: 3, time_seconds: 30, rest_seconds: 45 },
+        { name: 'Resistance Band Curls', sets: 4, reps: '15-20', rest_seconds: 45 },
+        { name: 'Bodyweight Curls (table edge)', sets: 3, reps: '10-15', rest_seconds: 60 }
+      ]
+    } else if (focusLower.includes('tricep')) {
+      return [
+        { name: 'Diamond Push-ups', sets: 4, reps: '10-15', rest_seconds: 60 },
+        { name: 'Tricep Dips (using chair)', sets: 4, reps: '12-15', rest_seconds: 60 },
+        { name: 'Pike Push-ups', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Close-Grip Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 }
+      ]
+    } else if (focusLower.includes('chest')) {
+      return [
+        { name: 'Push-ups', sets: 4, reps: '12-15', rest_seconds: 60 },
+        { name: 'Wide-Grip Push-ups', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Incline Push-ups', sets: 3, reps: '12-15', rest_seconds: 60 },
+        { name: 'Chest Dips', sets: 3, reps: '8-12', rest_seconds: 90 }
+      ]
+    } else if (focusLower.includes('leg') || focusLower.includes('glute')) {
+      return [
+        { name: 'Squats', sets: 4, reps: '15-20', rest_seconds: 60 },
+        { name: 'Lunges', sets: 3, reps: '12 each leg', rest_seconds: 60 },
+        { name: 'Jump Squats', sets: 3, reps: '10-12', rest_seconds: 90 },
+        { name: 'Wall Sit', sets: 3, time_seconds: 45, rest_seconds: 60 },
+        { name: 'Calf Raises', sets: 3, reps: '20', rest_seconds: 45 }
+      ]
+    } else {
+      // Full body default
+      return [
+        { name: 'Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 },
+        { name: 'Squats', sets: 3, reps: '15-20', rest_seconds: 60 },
+        { name: 'Plank', sets: 3, time_seconds: 30, rest_seconds: 45 },
+        { name: 'Lunges', sets: 3, reps: '10 each leg', rest_seconds: 60 },
+        { name: 'Mountain Climbers', sets: 3, time_seconds: 30, rest_seconds: 60 }
+      ]
+    }
+  }
+
   constructor() {
     if (process.env.ANTHROPIC_API_KEY) {
       try {
@@ -95,7 +148,19 @@ export class AIClient {
     }
 
     // Return a fallback workout when no AI is configured
+    console.error('⚠️ NO AI PROVIDER CONFIGURED - Using fallback mode')
+    console.error('Please set ANTHROPIC_API_KEY or OPENAI_API_KEY environment variable')
+    
     if (options?.jsonMode) {
+      // Try to extract focus from the prompt if possible
+      const focusMatch = userPrompt.match(/Focus:\s*([^\n]+)/i)
+      const focus = focusMatch ? focusMatch[1] : 'full body'
+      
+      console.log('Fallback mode - attempting to generate workout for focus:', focus)
+      
+      // Generate exercises based on focus
+      const mainExercises = this.getFallbackExercisesForFocus(focus)
+      
       return {
         content: JSON.stringify({
           program_phase: "General Training",
@@ -104,33 +169,27 @@ export class AIClient {
               title: "Warm-up",
               exercises: [
                 { name: "Arm Circles", sets: 2, reps: "10 each direction", rest_seconds: 30 },
-                { name: "Leg Swings", sets: 2, reps: "10 each leg", rest_seconds: 30 },
-                { name: "Jumping Jacks", sets: 2, time_seconds: 60, rest_seconds: 30 }
+                { name: "Wrist Rotations", sets: 2, reps: "10 each direction", rest_seconds: 30 },
+                { name: "Light Cardio", sets: 1, time_seconds: 120, rest_seconds: 30 }
               ]
             },
             {
-              title: "Main Workout",
-              exercises: [
-                { name: "Push-ups", sets: 3, reps: "10-15", rest_seconds: 60 },
-                { name: "Bodyweight Squats", sets: 3, reps: "15-20", rest_seconds: 60 },
-                { name: "Plank", sets: 3, time_seconds: 30, rest_seconds: 45 },
-                { name: "Lunges", sets: 3, reps: "10 each leg", rest_seconds: 60 },
-                { name: "Mountain Climbers", sets: 3, time_seconds: 30, rest_seconds: 60 }
-              ]
+              title: `Main Workout - ${focus}`,
+              exercises: mainExercises
             },
             {
               title: "Cool-down",
               exercises: [
-                { name: "Forward Fold", sets: 1, time_seconds: 60 },
-                { name: "Quad Stretch", sets: 2, time_seconds: 30, notes: ["Each leg"] },
-                { name: "Shoulder Stretch", sets: 2, time_seconds: 30, notes: ["Each arm"] }
+                { name: "Arm Stretches", sets: 1, time_seconds: 30, notes: ["Each arm"] },
+                { name: "Shoulder Stretches", sets: 1, time_seconds: 30, notes: ["Each side"] },
+                { name: "Deep Breathing", sets: 1, time_seconds: 60 }
               ]
             }
           ],
-          training_goals: ["General fitness", "Strength", "Endurance"],
+          training_goals: [`${focus} training`, "Strength", "Muscle development"],
           constraints: [],
           intensity_target: "moderate",
-          notes: "This is a sample workout. Configure OPENAI_API_KEY or ANTHROPIC_API_KEY for AI-generated personalized workouts."
+          notes: "⚠️ AI NOT CONFIGURED - This is a fallback workout. Set ANTHROPIC_API_KEY or OPENAI_API_KEY for personalized AI workouts."
         }),
         usage: { input_tokens: 0, output_tokens: 0 }
       }

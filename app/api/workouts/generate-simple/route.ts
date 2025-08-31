@@ -3,6 +3,78 @@ import { AIClient } from '@/lib/ai/provider'
 import { WORKOUT_SYSTEM_PROMPT } from '@/lib/ai/prompting'
 import { WorkoutPlanSchema } from '@/lib/ai/schema'
 
+// Helper function to get appropriate exercises based on focus
+function getFallbackExercises(focus: string, equipment: string[] = []) {
+  const focusLower = focus.toLowerCase()
+  const hasEquipment = equipment.length > 0
+  
+  // Bicep exercises
+  if (focusLower.includes('bicep')) {
+    if (hasEquipment && (equipment.includes('dumbbells') || equipment.includes('barbell'))) {
+      return [
+        { name: 'Dumbbell Bicep Curls', sets: 4, reps: '12-15', rest_seconds: 60 },
+        { name: 'Hammer Curls', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Concentration Curls', sets: 3, reps: '12-15', rest_seconds: 45 },
+        { name: '21s Bicep Curls', sets: 2, reps: '21', rest_seconds: 90 }
+      ]
+    }
+    return [
+      { name: 'Chin-ups (underhand grip)', sets: 3, reps: '8-12', rest_seconds: 90 },
+      { name: 'Resistance Band Curls', sets: 4, reps: '15-20', rest_seconds: 45 },
+      { name: 'Isometric Bicep Hold', sets: 3, time_seconds: 30, rest_seconds: 45 },
+      { name: 'Bodyweight Curls (using table edge)', sets: 3, reps: '10-15', rest_seconds: 60 }
+    ]
+  }
+  
+  // Tricep exercises
+  if (focusLower.includes('tricep')) {
+    if (hasEquipment && (equipment.includes('dumbbells') || equipment.includes('barbell'))) {
+      return [
+        { name: 'Tricep Dips', sets: 4, reps: '12-15', rest_seconds: 60 },
+        { name: 'Overhead Tricep Extension', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Tricep Kickbacks', sets: 3, reps: '12-15', rest_seconds: 45 },
+        { name: 'Close-Grip Press', sets: 3, reps: '10-12', rest_seconds: 90 }
+      ]
+    }
+    return [
+      { name: 'Diamond Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 },
+      { name: 'Tricep Dips (using chair)', sets: 3, reps: '12-15', rest_seconds: 60 },
+      { name: 'Pike Push-ups', sets: 3, reps: '10-12', rest_seconds: 60 },
+      { name: 'Tricep Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 }
+    ]
+  }
+  
+  // Bicep AND Tricep
+  if ((focusLower.includes('bicep') && focusLower.includes('tricep')) || focusLower.includes('arms')) {
+    if (hasEquipment) {
+      return [
+        { name: 'Superset: Bicep Curls', sets: 3, reps: '12', rest_seconds: 0 },
+        { name: 'Superset: Tricep Dips', sets: 3, reps: '12', rest_seconds: 90 },
+        { name: 'Hammer Curls', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Overhead Tricep Extension', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: '21s Bicep Curls', sets: 2, reps: '21', rest_seconds: 60 },
+        { name: 'Tricep Kickbacks', sets: 3, reps: '12-15', rest_seconds: 60 }
+      ]
+    }
+    return [
+      { name: 'Chin-ups', sets: 3, reps: '8-10', rest_seconds: 90 },
+      { name: 'Diamond Push-ups', sets: 3, reps: '10-12', rest_seconds: 60 },
+      { name: 'Resistance Band Curls', sets: 3, reps: '15', rest_seconds: 45 },
+      { name: 'Tricep Dips', sets: 3, reps: '12-15', rest_seconds: 60 },
+      { name: 'Isometric Bicep Hold', sets: 2, time_seconds: 30, rest_seconds: 45 },
+      { name: 'Pike Push-ups', sets: 3, reps: '10', rest_seconds: 60 }
+    ]
+  }
+  
+  // Default full body
+  return [
+    { name: 'Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 },
+    { name: 'Squats', sets: 3, reps: '15-20', rest_seconds: 60 },
+    { name: 'Plank', sets: 3, time_seconds: 30, rest_seconds: 45 },
+    { name: 'Lunges', sets: 3, reps: '10 each leg', rest_seconds: 60 }
+  ]
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -78,10 +150,29 @@ Duration: ${duration} minutes
 Intensity: ${intensity}
 Focus: ${focus || 'full body'}
 
-Generate a complete workout plan as JSON. Include warm-up, main work, and cool-down.`
+IMPORTANT: This workout MUST focus on ${focus || 'full body'}. If the focus is a specific muscle group (like biceps, triceps, chest, etc.), the main workout block MUST contain exercises targeting those specific muscles.
+
+Generate a complete workout plan as JSON with this exact structure:
+{
+  "blocks": [
+    { "title": "Warm-up", "exercises": [...] },
+    { "title": "Main Workout", "exercises": [...exercises focusing on ${focus || 'full body'}...] },
+    { "title": "Cool-down", "exercises": [...] }
+  ],
+  "training_goals": [...],
+  "constraints": [...],
+  "intensity_target": "${intensity}"
+}`
 
     // Generate workout with AI
+    console.log('=== AI WORKOUT GENERATION ===')
+    console.log('Focus requested:', focus || 'full body')
+    console.log('Equipment:', equipment)
+    console.log('Prompt length:', prompt.length, 'characters')
+    
     const aiClient = new AIClient()
+    console.log('Calling AI with prompt...')
+    
     const response = await aiClient.generateText(
       WORKOUT_SYSTEM_PROMPT,
       prompt,
@@ -90,6 +181,9 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
         jsonMode: true 
       }
     )
+    
+    console.log('AI responded successfully:', !!response.content)
+    console.log('Response length:', response.content?.length || 0, 'characters')
 
     // Parse and validate the generated workout
     let workoutPlan
@@ -127,7 +221,10 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
       console.error('Failed to parse AI response:', parseError)
       console.error('AI Response was:', response.content)
       
-      // Return a comprehensive fallback workout
+      // Return a fallback workout that respects the requested focus
+      console.error('Using fallback workout for focus:', focus)
+      const fallbackExercises = getFallbackExercises(focus || 'full body', equipment)
+      
       workoutPlan = {
         client_id: clientId || 'guest',
         title: title,
@@ -136,31 +233,26 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
           {
             title: 'Warm-up',
             exercises: [
-              { name: 'Jumping Jacks', sets: 1, time_seconds: 60 },
-              { name: 'Arm Circles', sets: 1, reps: '10 each direction' },
-              { name: 'Leg Swings', sets: 1, reps: '10 each leg' }
+              { name: 'Arm Circles', sets: 2, reps: '10 each direction' },
+              { name: 'Wrist Rotations', sets: 1, reps: '10 each direction' },
+              { name: 'Light Cardio', sets: 1, time_seconds: 120 }
             ]
           },
           {
-            title: 'Main Workout',
-            exercises: [
-              { name: 'Push-ups', sets: 3, reps: '10-15', rest_seconds: 60 },
-              { name: 'Squats', sets: 3, reps: '15-20', rest_seconds: 60 },
-              { name: 'Plank', sets: 3, time_seconds: 30, rest_seconds: 45 },
-              { name: 'Lunges', sets: 3, reps: '10 each leg', rest_seconds: 60 }
-            ]
+            title: `Main Workout - ${focus || 'Full Body'}`,
+            exercises: fallbackExercises
           },
           {
             title: 'Cool-down',
             exercises: [
-              { name: 'Forward Fold', sets: 1, time_seconds: 60 },
-              { name: 'Quad Stretch', sets: 1, time_seconds: 30, notes: ['Each leg'] },
-              { name: 'Shoulder Stretch', sets: 1, time_seconds: 30, notes: ['Each arm'] }
+              { name: 'Arm Stretches', sets: 1, time_seconds: 30, notes: ['Each arm'] },
+              { name: 'Shoulder Stretches', sets: 1, time_seconds: 30, notes: ['Each side'] },
+              { name: 'Deep Breathing', sets: 1, time_seconds: 60 }
             ]
           }
         ],
         total_time_minutes: duration,
-        training_goals: [client.goals || 'General fitness'],
+        training_goals: [`${focus || 'General'} training`, client.goals || 'General fitness'],
         constraints: client.injuries ? [client.injuries] : [],
         intensity_target: intensity,
         version: 1
@@ -186,23 +278,23 @@ Generate a complete workout plan as JSON. Include warm-up, main work, and cool-d
   } catch (error) {
     console.error('Workout generation error:', error)
     
-    // Return a basic workout even if AI fails
+    // Return a basic workout that still respects the focus
+    console.error('Critical error, using emergency fallback for focus:', body.focus)
     const fallbackWorkout = {
       id: `workout-${Date.now()}`,
-      title: 'Basic Workout',
+      title: title || 'Workout',
       plan: {
         blocks: [
           {
-            title: 'Full Body Workout',
-            exercises: [
-              { name: 'Jumping Jacks', sets: 3, time_seconds: 30 },
-              { name: 'Push-ups', sets: 3, reps: 10 },
-              { name: 'Squats', sets: 3, reps: 15 },
-              { name: 'Plank', sets: 3, time_seconds: 30 }
-            ]
+            title: `${body.focus || 'Full Body'} Workout`,
+            exercises: getFallbackExercises(body.focus || 'full body', body.equipment || [])
           }
-        ]
+        ],
+        training_goals: [`${body.focus || 'General'} training`],
+        total_time_minutes: body.duration || 60
       },
+      clients: body.client || { full_name: 'Guest User' },
+      source: 'fallback',
       created_at: new Date().toISOString()
     }
     
