@@ -55,14 +55,15 @@ export default function ClientsPage() {
   useEffect(() => {
     console.log('🚀 ClientsPage useEffect triggered - calling loadClients()')
     
-    // Set timeout to prevent infinite loading
+    // Set timeout to prevent infinite loading - increased to 30 seconds for large datasets
     const loadingTimeout = setTimeout(() => {
       if (loading) {
         console.error('⏱️ Loading timeout - forcing loading state to false')
         setLoading(false)
-        setConnectionError('Loading timed out. Please check your connection and try refreshing the page.')
+        setConnectionError('Loading timed out after 30 seconds. Please check your connection and try refreshing the page.')
+        setImportStatus({ type: 'error', message: '⏱️ Loading timed out. The database might be slow or your connection may be unstable. Please try refreshing the page.' })
       }
-    }, 10000) // 10 second timeout
+    }, 30000) // 30 second timeout for large datasets
     
     loadClients().finally(() => {
       clearTimeout(loadingTimeout)
@@ -88,36 +89,62 @@ export default function ClientsPage() {
     try {
       console.log('🔗 Testing connection to client service...')
       
-      // First try using the API endpoint as a fallback to bypass potential Supabase issues
+      // Use API endpoint first as it's more reliable than browser Supabase client
       let cloudClients
-      let usingFallback = false
+      let usingDirect = false
       
       try {
-        cloudClients = await clientService.getClients()
-        console.log(`✅ Service call successful: ${cloudClients?.length || 0} clients`)
-      } catch (serviceError) {
-        console.error('🚨 Service call failed, trying API fallback:', serviceError)
-        usingFallback = true
+        console.log('🔄 Attempting API endpoint first...')
+        const response = await fetch('/api/clients/test', {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          cache: 'no-cache'
+        })
+        
+        if (!response.ok) {
+          throw new Error(`API response not ok: ${response.status} ${response.statusText}`)
+        }
+        
+        const apiData = await response.json()
+        
+        if (apiData.clients && Array.isArray(apiData.clients)) {
+          // Get all clients, not just the first 10
+          const fullResponse = await fetch('/api/debug-clients', {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            cache: 'no-cache'
+          })
+          
+          if (fullResponse.ok) {
+            const fullData = await fullResponse.json()
+            cloudClients = fullData.clients || apiData.clients
+          } else {
+            cloudClients = apiData.clients
+          }
+          
+          console.log(`✅ API endpoint successful: ${cloudClients?.length || 0} clients`)
+        } else {
+          throw new Error(`Invalid API response: no clients array found`)
+        }
+      } catch (apiError) {
+        console.error('🚨 API endpoint failed, trying direct service:', apiError)
+        usingDirect = true
         
         try {
-          console.log('🔄 Attempting API fallback...')
-          const response = await fetch('/api/clients/test')
-          const apiData = await response.json()
-          
-          if (response.ok && apiData.clients) {
-            cloudClients = apiData.clients
-            console.log(`✅ API fallback successful: ${cloudClients?.length || 0} clients`)
-          } else {
-            throw new Error(`API fallback failed: ${apiData.message || 'Unknown error'}`)
-          }
-        } catch (fetchError) {
-          console.error('💥 Both service and API fallback failed:', fetchError)
-          throw new Error('All data loading methods failed')
+          cloudClients = await clientService.getClients()
+          console.log(`✅ Direct service successful: ${cloudClients?.length || 0} clients`)
+        } catch (serviceError) {
+          console.error('💥 Both API and direct service failed:', serviceError)
+          throw new Error(`All data loading methods failed. API: ${apiError.message}. Service: ${serviceError instanceof Error ? serviceError.message : 'Unknown'}`)
         }
       }
       
       console.log(`📊 Data loading summary:`, {
-        method: usingFallback ? 'API fallback' : 'Direct service',
+        method: usingDirect ? 'Direct service' : 'API endpoint',
         clientCount: cloudClients?.length || 0,
         dataType: typeof cloudClients,
         isArray: Array.isArray(cloudClients)
@@ -127,11 +154,11 @@ export default function ClientsPage() {
         console.log('🎯 Setting clients state with:', cloudClients.length, 'clients')
         console.log('🔍 Sample client data:', cloudClients[0])
         
-        // Ensure React state updates properly
-        setClients(cloudClients)
+        // Force state update by ensuring array reference changes
+        setClients([...cloudClients])
         console.log(`✅ State set with ${cloudClients.length} clients`)
         
-        setImportStatus(null) // Clear any previous error messages
+        setImportStatus({ type: 'success', message: `✅ Successfully loaded ${cloudClients.length} clients from cloud database` })
         console.log(`🚀 Successfully loaded ${cloudClients.length} clients!`)
       } else if (Array.isArray(cloudClients) && cloudClients.length === 0) {
         console.log('📝 No clients found in database. Ready to add new clients.')
@@ -147,7 +174,7 @@ export default function ClientsPage() {
       console.error('❌ Exception in loadClients:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setConnectionError(`Failed to connect to database: ${errorMessage}`)
-      setImportStatus({ type: 'error', message: `Database connection error: ${errorMessage}. Please check your internet connection and try refreshing.` })
+      setImportStatus({ type: 'error', message: `❌ Database connection error: ${errorMessage}. Please check your internet connection and try refreshing.` })
       setClients([]) // Set empty array on error
     } finally {
       console.log('✅ Setting loading to false')

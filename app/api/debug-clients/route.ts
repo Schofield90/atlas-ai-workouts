@@ -10,6 +10,7 @@ export async function GET() {
       success: true,
       message: `Debug endpoint - simpleClientService returned ${clients?.length || 0} clients`,
       clientCount: clients?.length || 0,
+      clients: clients, // Return all clients
       dataType: typeof clients,
       isArray: Array.isArray(clients),
       sampleClient: clients?.[0] || null,

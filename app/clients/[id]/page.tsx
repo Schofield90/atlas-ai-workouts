@@ -16,7 +16,7 @@ import {
   Calendar,
   ChevronRight
 } from 'lucide-react'
-import { createClient } from '@/lib/db/client-fixed'
+import { simpleClientService } from '@/lib/services/workout-data-simple'
 
 interface Client {
   id: string
@@ -86,37 +86,30 @@ export default function ClientPage() {
       
       console.log('Loading client with ID:', clientId)
       
-      // Load client from Supabase
-      const supabase = createClient()
-      const { data: foundClient, error: clientError } = await supabase
-        .from('workout_clients')
-        .select('*')
-        .eq('id', clientId)
-        .single()
+      // Load client using service
+      const foundClient = await simpleClientService.getClient(clientId)
       
-      if (clientError) {
-        console.error('Error loading client:', clientError)
+      if (!foundClient) {
+        console.error('Client not found with ID:', clientId)
         setError('Client not found')
         return
       }
       
-      if (foundClient) {
-        setClient(foundClient)
-        
-        // Load workouts for this client from Supabase
-        const { data: clientWorkouts, error: workoutsError } = await supabase
-          .from('workout_sessions')
-          .select('id, title, description, workout_type, difficulty, created_at, client_id')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
-        
-        if (workoutsError) {
-          console.error('Error loading workouts:', workoutsError)
+      setClient(foundClient)
+      
+      // Load workouts for this client (using direct query for now as there's no workout service)
+      try {
+        const response = await fetch(`/api/workouts?client_id=${clientId}`)
+        if (response.ok) {
+          const workoutsData = await response.json()
+          setWorkouts(workoutsData.workouts || [])
         } else {
-          setWorkouts(clientWorkouts || [])
+          console.log('No workouts API available, skipping workout loading')
+          setWorkouts([])
         }
-      } else {
-        setError('Client not found')
+      } catch (workoutError) {
+        console.log('Could not load workouts:', workoutError)
+        setWorkouts([])
       }
     } catch (err) {
       console.error('Error loading client data:', err)
@@ -130,18 +123,7 @@ export default function ClientPage() {
     if (!client || !confirm('Are you sure you want to delete this client?')) return
     
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('workout_clients')
-        .delete()
-        .eq('id', clientId)
-
-      if (error) {
-        console.error('Error deleting client:', error)
-        setError('Failed to delete client')
-        return
-      }
-
+      await simpleClientService.deleteClient(clientId)
       router.push('/clients')
     } catch (err) {
       console.error('Error deleting client:', err)
