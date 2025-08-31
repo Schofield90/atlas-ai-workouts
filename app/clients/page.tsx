@@ -95,7 +95,7 @@ export default function ClientsPage() {
       
       try {
         console.log('🔄 Attempting API endpoint first...')
-        const response = await fetch('/api/clients/test', {
+        const response = await fetch('/api/clients', {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
@@ -110,22 +110,7 @@ export default function ClientsPage() {
         const apiData = await response.json()
         
         if (apiData.clients && Array.isArray(apiData.clients)) {
-          // Get all clients, not just the first 10
-          const fullResponse = await fetch('/api/debug-clients', {
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            cache: 'no-cache'
-          })
-          
-          if (fullResponse.ok) {
-            const fullData = await fullResponse.json()
-            cloudClients = fullData.clients || apiData.clients
-          } else {
-            cloudClients = apiData.clients
-          }
-          
+          cloudClients = apiData.clients
           console.log(`✅ API endpoint successful: ${cloudClients?.length || 0} clients`)
         } else {
           throw new Error(`Invalid API response: no clients array found`)
@@ -139,7 +124,7 @@ export default function ClientsPage() {
           console.log(`✅ Direct service successful: ${cloudClients?.length || 0} clients`)
         } catch (serviceError) {
           console.error('💥 Both API and direct service failed:', serviceError)
-          throw new Error(`All data loading methods failed. API: ${apiError.message}. Service: ${serviceError instanceof Error ? serviceError.message : 'Unknown'}`)
+          throw new Error(`All data loading methods failed. API: ${apiError instanceof Error ? apiError.message : 'Unknown'}. Service: ${serviceError instanceof Error ? serviceError.message : 'Unknown'}`)
         }
       }
       

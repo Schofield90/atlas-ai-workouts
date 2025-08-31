@@ -86,8 +86,16 @@ export default function ClientPage() {
       
       console.log('Loading client with ID:', clientId)
       
-      // Load client using service
-      const foundClient = await simpleClientService.getClient(clientId)
+      // Use API endpoint directly for better reliability
+      const response = await fetch(`/api/clients/${clientId}`)
+      
+      if (!response.ok) {
+        console.error('Failed to fetch client:', response.status)
+        setError('Client not found')
+        return
+      }
+      
+      const foundClient = await response.json()
       
       if (!foundClient) {
         console.error('Client not found with ID:', clientId)
