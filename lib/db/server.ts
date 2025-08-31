@@ -1,4 +1,5 @@
 import { createServerClient as createSSRClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
@@ -38,6 +39,20 @@ export async function createServiceClient() {
         },
         setAll() {},
       },
+    }
+  )
+}
+
+// Simple client for server components without auth
+export function createClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
     }
   )
 }
