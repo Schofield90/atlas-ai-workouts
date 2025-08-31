@@ -15,6 +15,7 @@ export class AIClient {
   private anthropic?: Anthropic
   private openai?: OpenAI
   private provider: AIProvider = 'fallback'
+  private preferredProvider?: AIProvider
 
   private getFallbackExercisesForFocus(focus: string) {
     const focusLower = focus.toLowerCase()
@@ -69,34 +70,49 @@ export class AIClient {
     }
   }
 
-  constructor() {
+  constructor(preferredProvider?: AIProvider) {
     console.log('=== AI Provider Initialization ===')
+    console.log('Preferred provider:', preferredProvider || process.env.AI_PROVIDER || 'auto')
     console.log('Anthropic key exists:', !!process.env.ANTHROPIC_API_KEY)
     console.log('OpenAI key exists:', !!process.env.OPENAI_API_KEY)
     console.log('OpenAI key length:', process.env.OPENAI_API_KEY?.length || 0)
     
-    if (process.env.ANTHROPIC_API_KEY) {
-      try {
-        this.anthropic = new Anthropic({
-          apiKey: process.env.ANTHROPIC_API_KEY,
-        })
-        this.provider = 'anthropic'
-        console.log('✅ Anthropic initialized successfully')
-      } catch (error) {
-        console.warn('Failed to initialize Anthropic:', error)
-      }
-    } 
+    this.preferredProvider = preferredProvider || (process.env.AI_PROVIDER as AIProvider)
     
-    if (!this.anthropic && process.env.OPENAI_API_KEY) {
+    // Initialize both providers if keys are available
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'placeholder-openai-key') {
       try {
         this.openai = new OpenAI({
           apiKey: process.env.OPENAI_API_KEY,
         })
-        this.provider = 'openai'
         console.log('✅ OpenAI initialized successfully')
       } catch (error) {
         console.warn('❌ Failed to initialize OpenAI:', error)
       }
+    } else if (process.env.OPENAI_API_KEY === 'placeholder-openai-key') {
+      console.warn('⚠️ OpenAI key is a placeholder - please set a valid OPENAI_API_KEY')
+    }
+    
+    if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'placeholder-anthropic-key') {
+      try {
+        this.anthropic = new Anthropic({
+          apiKey: process.env.ANTHROPIC_API_KEY,
+        })
+        console.log('✅ Anthropic initialized successfully')
+      } catch (error) {
+        console.warn('❌ Failed to initialize Anthropic:', error)
+      }
+    }
+    
+    // Determine which provider to use based on preference and availability
+    if (this.preferredProvider === 'openai' && this.openai) {
+      this.provider = 'openai'
+    } else if (this.preferredProvider === 'anthropic' && this.anthropic) {
+      this.provider = 'anthropic'
+    } else if (this.anthropic) {
+      this.provider = 'anthropic'
+    } else if (this.openai) {
+      this.provider = 'openai'
     }
     
     // Don't throw error, allow fallback mode
@@ -105,6 +121,10 @@ export class AIClient {
     }
     
     console.log('Final provider:', this.provider)
+  }
+
+  getProvider(): AIProvider {
+    return this.provider
   }
 
   async generateText(
@@ -137,10 +157,11 @@ export class AIClient {
       }
     } else if (this.provider === 'openai' && this.openai) {
       try {
+        const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
         console.log('Calling OpenAI API...')
-        console.log('Model:', process.env.GEN_MODEL || 'gpt-4-turbo-preview')
+        console.log('Model:', model)
         const response = await this.openai.chat.completions.create({
-          model: process.env.GEN_MODEL || 'gpt-4-turbo-preview',
+          model: model,
           temperature,
           max_tokens: maxTokens,
           response_format: options?.jsonMode ? { type: 'json_object' } : undefined,

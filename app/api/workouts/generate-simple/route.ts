@@ -91,7 +91,7 @@ function getFallbackExercises(focus: string, equipment: string[] = []) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context } = body
+    const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context, provider } = body
 
     // Get client from localStorage (this is passed from frontend)
     const client = body.client || {
@@ -183,7 +183,8 @@ Generate a complete workout plan as JSON with this exact structure:
     console.log('Equipment:', equipment)
     console.log('Prompt length:', prompt.length, 'characters')
     
-    const aiClient = new AIClient()
+    const aiClient = new AIClient(provider)
+    console.log('Using AI provider:', provider || process.env.AI_PROVIDER || 'auto')
     console.log('Calling AI with prompt...')
     
     const response = await aiClient.generateText(
@@ -197,6 +198,7 @@ Generate a complete workout plan as JSON with this exact structure:
     
     console.log('AI responded successfully:', !!response.content)
     console.log('Response length:', response.content?.length || 0, 'characters')
+    console.log('AI Provider used:', aiClient.getProvider ? aiClient.getProvider() : 'unknown')
 
     // Parse and validate the generated workout
     let workoutPlan
@@ -287,6 +289,7 @@ Generate a complete workout plan as JSON with this exact structure:
       success: true,
       workoutId: workout.id,
       workout: workout,
+      provider: aiClient.getProvider ? aiClient.getProvider() : 'unknown'
     })
   } catch (error) {
     console.error('Workout generation error:', error)
