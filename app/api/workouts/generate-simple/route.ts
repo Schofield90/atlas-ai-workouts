@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context, provider } = body
 
-    // Get client from localStorage (this is passed from frontend)
+    // Get client from request body (passed from frontend)
     const client = body.client || {
       full_name: 'Guest User',
       goals: 'General fitness',

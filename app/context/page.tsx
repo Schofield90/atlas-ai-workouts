@@ -36,23 +36,16 @@ export default function ContextPage() {
 
   async function loadSops() {
     try {
-      // Try to load from API first
       const response = await fetch('/api/sops')
       if (response.ok) {
         const data = await response.json()
-        if (data.sops && data.sops.length > 0) {
+        if (data.sops) {
           setSops(data.sops)
-          return
         }
       }
     } catch (error) {
       console.error('Error loading SOPs from API:', error)
-    }
-    
-    // Fallback to localStorage
-    const saved = localStorage.getItem('workout-sops')
-    if (saved) {
-      setSops(JSON.parse(saved))
+      setMessage({ type: 'error', text: 'Failed to load SOPs from database' })
     }
   }
 
@@ -77,8 +70,6 @@ export default function ContextPage() {
         if (data.success && data.sop) {
           const updatedSops = [...sops, data.sop]
           setSops(updatedSops)
-          // Also save to localStorage as backup
-          localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
           setNewSop({ title: '', content: '', category: 'general' })
           setMessage({ type: 'success', text: 'SOP saved to database! The AI will use this context when generating workouts.' })
           setSaving(false)
@@ -87,15 +78,7 @@ export default function ContextPage() {
       }
     } catch (error) {
       console.error('Error saving to API:', error)
-    }
-    
-    // Fallback to localStorage only
-    const sop: SOP = {
-      id: Date.now().toString(),
-      title: newSop.title,
-      content: newSop.content,
-      category: newSop.category,
-      createdAt: new Date().toISOString()
+      setMessage({ type: 'error', text: 'Failed to save SOP to database' })
     }
 
     const updatedSops = [...sops, sop]
@@ -119,19 +102,13 @@ export default function ContextPage() {
       if (response.ok) {
         const updatedSops = sops.filter(s => s.id !== id)
         setSops(updatedSops)
-        localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
         setMessage({ type: 'success', text: 'SOP deleted from database' })
         return
       }
     } catch (error) {
       console.error('Error deleting from API:', error)
+      setMessage({ type: 'error', text: 'Failed to delete SOP from database' })
     }
-    
-    // Fallback to localStorage only
-    const updatedSops = sops.filter(s => s.id !== id)
-    setSops(updatedSops)
-    localStorage.setItem('workout-sops', JSON.stringify(updatedSops))
-    setMessage({ type: 'success', text: 'SOP deleted locally' })
   }
 
   const categoryColors = {

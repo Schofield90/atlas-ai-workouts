@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, ChevronDown, ChevronUp, Dumbbell, Search, X, Users } from 'lucide-react'
+import { createClient } from '@/lib/db/client-fixed'
 
 export default function BuilderPage() {
   const router = useRouter()
@@ -103,40 +104,6 @@ export default function BuilderPage() {
       }
     } catch (error) {
       console.error('Error loading SOPs from API:', error)
-    }
-    
-    // Fallback to localStorage contexts
-    try {
-      const saved = localStorage.getItem('ai-workout-contexts')
-      const savedContexts = saved ? JSON.parse(saved) : []
-      const validContexts = (Array.isArray(savedContexts) ? savedContexts : []).map((ctx: any) => ({
-        ...ctx,
-        documents: Array.isArray(ctx.documents) ? ctx.documents : [],
-        textSections: Array.isArray(ctx.textSections) ? ctx.textSections : []
-      }))
-      
-      // Also check for SOPs in localStorage
-      const localSops = localStorage.getItem('workout-sops')
-      if (localSops) {
-        const sops = JSON.parse(localSops)
-        if (sops.length > 0) {
-          const sopContext = {
-            id: 'local-sops-context',
-            name: 'Local SOPs',
-            documents: sops.map((sop: any) => ({
-              id: sop.id,
-              name: sop.title,
-              content: sop.content,
-              category: sop.category
-            })),
-            textSections: sops.map((sop: any) => ({
-              id: sop.id,
-              title: sop.title,
-              content: sop.content,
-              category: 'sop'
-            })),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
           }
           validContexts.unshift(sopContext)
         }
@@ -204,10 +171,30 @@ export default function BuilderPage() {
         console.warn('⚠️ Using fallback workout - AI generation may have failed')
       }
 
-      // Save workout to localStorage
-      const existingWorkouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
-      existingWorkouts.push(data.workout)
-      localStorage.setItem('ai-workout-workouts', JSON.stringify(existingWorkouts))
+      // Save workout to Supabase
+      try {
+        const supabase = createClient()
+        const { data: savedWorkout, error: saveError } = await supabase
+          .from('workout_sessions')
+          .insert({
+            id: data.workoutId,
+            title: title || 'Untitled Workout',
+            plan: data.workout.plan,
+            client_id: selectedClient?.id || null,
+            source: data.workout.source || 'ai',
+            version: data.workout.version || 1
+          })
+          .select()
+          .single()
+        
+        if (saveError) {
+          console.error('Error saving workout to database:', saveError)
+        } else {
+          console.log('Workout saved to database:', savedWorkout)
+        }
+      } catch (saveErr) {
+        console.error('Failed to save workout to database:', saveErr)
+      }
 
       // Navigate to the created workout
       setGenerating(false)

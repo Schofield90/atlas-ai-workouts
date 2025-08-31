@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, Clock, ChevronRight, Dumbbell } from 'lucide-react'
+import { createClient } from '@/lib/db/client-fixed'
 
 export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<any[]>([])
@@ -12,12 +13,27 @@ export default function WorkoutsPage() {
     loadWorkouts()
   }, [])
 
-  function loadWorkouts() {
+  async function loadWorkouts() {
     try {
-      const saved = localStorage.getItem('ai-workout-workouts')
-      const savedWorkouts = saved ? JSON.parse(saved) : []
-      const validWorkouts = Array.isArray(savedWorkouts) ? savedWorkouts : []
-      setWorkouts(validWorkouts)
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(`
+          *,
+          workout_clients (
+            id,
+            full_name
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      
+      if (error) {
+        console.error('Error loading workouts:', error)
+        setWorkouts([])
+      } else {
+        setWorkouts(data || [])
+      }
     } catch (error) {
       console.error('Error loading workouts:', error)
       setWorkouts([])
