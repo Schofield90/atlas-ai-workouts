@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import type { WorkoutPlan, WorkoutBlock } from '@/lib/ai/schema'
-import FeedbackChat from '@/app/components/feedback-chat'
+import WorkoutFeedback from '@/app/components/WorkoutFeedback'
 
 interface WorkoutViewerProps {
   workout: {
@@ -428,10 +428,11 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
         </div>
       </main>
       
-      {/* Feedback Chat Component */}
-      <FeedbackChat 
+      {/* Workout Feedback Component */}
+      <WorkoutFeedback 
         workoutId={workout.id}
         workoutTitle={workout.title}
+        clientId={workout.plan.client_id}
         clientName={workout.clients?.full_name}
       />
     </div>

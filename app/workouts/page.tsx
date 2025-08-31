@@ -34,27 +34,27 @@ export default function WorkoutsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading workouts...</div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-400">Loading workouts...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-900">
+      <nav className="bg-gray-800 shadow-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-700 mr-4">
+              <Link href="/dashboard" className="text-gray-400 hover:text-gray-200 mr-4">
                 ← Back
               </Link>
-              <h1 className="text-xl font-semibold">All Workouts</h1>
+              <h1 className="text-xl font-semibold text-gray-100">All Workouts</h1>
             </div>
             <div className="flex items-center">
               <Link
                 href="/builder"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Workout
@@ -71,15 +71,15 @@ export default function WorkoutsPage() {
               <Link
                 key={workout.id}
                 href={`/workouts/${workout.id}`}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
+                className="bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow border border-gray-700"
               >
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <Dumbbell className="h-8 w-8 text-blue-600" />
+                    <Dumbbell className="h-8 w-8 text-purple-400" />
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">{workout.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3">
+                  <h3 className="font-semibold text-lg mb-2 text-gray-100">{workout.title}</h3>
+                  <p className="text-sm text-gray-400 mb-3">
                     {workout.clients?.full_name || 'Guest User'}
                   </p>
                   <div className="flex items-center text-xs text-gray-500">
@@ -92,12 +92,12 @@ export default function WorkoutsPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <Dumbbell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">No workouts yet</h2>
-            <p className="text-gray-500 mb-6">Create your first AI-powered workout to get started</p>
+            <Dumbbell className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-300 mb-2">No workouts yet</h2>
+            <p className="text-gray-400 mb-6">Create your first AI-powered workout to get started</p>
             <Link
               href="/builder"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700"
             >
               <Plus className="h-5 w-5 mr-2" />
               Create First Workout

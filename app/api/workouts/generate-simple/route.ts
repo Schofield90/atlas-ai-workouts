@@ -157,13 +157,23 @@ export async function POST(request: NextRequest) {
 Client: ${client.full_name}
 Title: ${title}
 Goals: ${client.goals || 'General fitness'}
-Available Equipment: ${Array.isArray(equipment) && equipment.length > 0 ? equipment.join(', ') : 'bodyweight only'}
+Available Equipment: ${Array.isArray(equipment) && equipment.length > 0 ? equipment.join(', ') : (client.equipment && client.equipment.length > 0 ? client.equipment.join(', ') : 'bodyweight only')}
 Injuries/Limitations: ${client.injuries || 'none'}
 Duration: ${duration} minutes
 Intensity: ${intensity}
 Focus: ${focus || 'full body'}
 
-IMPORTANT: This workout MUST focus on ${focus || 'full body'}. If the focus is a specific muscle group (like biceps, triceps, chest, etc.), the main workout block MUST contain exercises targeting those specific muscles.
+CRITICAL REQUIREMENTS:
+1. This workout MUST focus on ${focus || 'full body'}. If the focus is a specific muscle group (like biceps, triceps, chest, etc.), the main workout block MUST contain exercises targeting those specific muscles.
+
+2. MUST respect client injuries/limitations: ${client.injuries || 'none'}
+   - If client has injuries, avoid exercises that could aggravate them
+   - Modify exercises or provide alternatives as needed
+   - Include specific constraints in the "constraints" field
+
+3. Equipment: Use only the equipment listed above. If none listed, use bodyweight only.
+
+4. The "constraints" field MUST list actual client limitations from their profile, NOT generic constraints.
 
 Generate a complete workout plan as JSON with this exact structure:
 {
@@ -172,8 +182,8 @@ Generate a complete workout plan as JSON with this exact structure:
     { "title": "Main Workout", "exercises": [...exercises focusing on ${focus || 'full body'}...] },
     { "title": "Cool-down", "exercises": [...] }
   ],
-  "training_goals": [...],
-  "constraints": [...],
+  "training_goals": [${client.goals ? `"${client.goals}"` : '"General fitness"'}],
+  "constraints": [${client.injuries && client.injuries !== 'none' && client.injuries !== 'No injuries reported' ? `"${client.injuries}"` : ''}],
   "intensity_target": "${intensity}"
 }`
 
@@ -267,8 +277,8 @@ Generate a complete workout plan as JSON with this exact structure:
           }
         ],
         total_time_minutes: duration,
-        training_goals: [`${focus || 'General'} training`, client.goals || 'General fitness'],
-        constraints: client.injuries ? [client.injuries] : [],
+        training_goals: [client.goals || `${focus || 'General'} training`],
+        constraints: (client.injuries && client.injuries !== 'none' && client.injuries !== 'No injuries reported') ? [client.injuries] : [],
         intensity_target: intensity,
         version: 1
       }
