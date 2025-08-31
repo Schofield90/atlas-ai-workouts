@@ -77,7 +77,7 @@ export default function BuilderPage() {
       if (response.ok) {
         const data = await response.json()
         if (data.sops && data.sops.length > 0) {
-          // Convert SOPs to context format
+          // Convert SOPs to context format - put in both documents AND textSections
           const sopContext = {
             id: 'sops-context',
             name: 'SOPs & Training Methods',
@@ -87,7 +87,12 @@ export default function BuilderPage() {
               content: sop.content,
               category: sop.category
             })),
-            textSections: [],
+            textSections: data.sops.map((sop: any) => ({
+              id: sop.id,
+              title: sop.title,
+              content: sop.content,
+              category: 'sop'
+            })),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }
@@ -124,7 +129,12 @@ export default function BuilderPage() {
               content: sop.content,
               category: sop.category
             })),
-            textSections: [],
+            textSections: sops.map((sop: any) => ({
+              id: sop.id,
+              title: sop.title,
+              content: sop.content,
+              category: 'sop'
+            })),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }

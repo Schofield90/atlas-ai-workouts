@@ -19,6 +19,14 @@ export async function POST(request: NextRequest) {
     // Build prompt with context
     let prompt = ''
     
+    // Log context for debugging
+    console.log('Context received:', {
+      hasContext: !!context,
+      textSectionsCount: context?.textSections?.length || 0,
+      documentsCount: context?.documents?.length || 0,
+      contextName: context?.name || 'none'
+    })
+    
     // Add project context if provided
     if (context) {
       prompt += `CONTEXT AND BACKGROUND:\n`
@@ -31,6 +39,7 @@ export async function POST(request: NextRequest) {
       // Add new text sections (SOPs, ChatGPT conversations, etc.)
       if (context.textSections && context.textSections.length > 0) {
         prompt += `KNOWLEDGE BASE:\n`
+        console.log(`Adding ${context.textSections.length} SOPs/text sections to prompt`)
         context.textSections.forEach((section: any) => {
           const categoryLabels: Record<string, string> = {
             'sop': 'SOP',
@@ -41,7 +50,7 @@ export async function POST(request: NextRequest) {
           const categoryLabel = categoryLabels[section.category] || 'Context'
           
           prompt += `\n[${categoryLabel}: ${section.title}]\n`
-          prompt += `${section.content.substring(0, 3000)}\n`
+          prompt += `${section.content.substring(0, 8000)}\n`
         })
         prompt += `\n`
       }
@@ -49,8 +58,9 @@ export async function POST(request: NextRequest) {
       // Add uploaded documents
       if (context.documents && context.documents.length > 0) {
         prompt += `REFERENCE DOCUMENTS:\n`
+        console.log(`Adding ${context.documents.length} documents to prompt`)
         context.documents.forEach((doc: any) => {
-          prompt += `[${doc.name}]:\n${doc.content.substring(0, 2000)}\n\n`
+          prompt += `[${doc.name}]:\n${doc.content.substring(0, 5000)}\n\n`
         })
       }
       
