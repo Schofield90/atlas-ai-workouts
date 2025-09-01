@@ -290,10 +290,10 @@ CRITICAL:
       
       // Validate and fix exercise structure
       if (parsed.blocks && Array.isArray(parsed.blocks)) {
-        parsed.blocks = parsed.blocks.map(block => {
+        parsed.blocks = parsed.blocks.map((block: any) => {
           if (block.exercises && Array.isArray(block.exercises)) {
             // Check if exercises are strings and convert to objects
-            block.exercises = block.exercises.map(exercise => {
+            block.exercises = block.exercises.map((exercise: any) => {
               if (typeof exercise === 'string') {
                 console.warn('Exercise is string, converting:', exercise)
                 // Try to parse string format like "Push-ups 3x10"

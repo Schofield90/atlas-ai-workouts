@@ -6,8 +6,10 @@ export const WorkoutExerciseSchema = z.object({
   sets: z.number().int().positive(),
   reps: z.union([z.string(), z.number()]).optional(),
   time_seconds: z.number().int().positive().optional(),
+  duration: z.string().optional(), // For exercises with duration like "30 seconds"
   tempo: z.string().optional(),
   rest_seconds: z.number().int().positive().optional(),
+  rest: z.string().optional(), // For rest periods like "60 seconds"
   load: z.string().optional(),
   notes: z.array(z.string()).optional(),
   substitutions: z.array(z.string()).optional(),

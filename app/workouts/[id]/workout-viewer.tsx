@@ -301,10 +301,10 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                                 {exercise.reps && (
                                   <span>× {typeof exercise.reps === 'number' ? `${exercise.reps} sets` : exercise.reps}</span>
                                 )}
-                                {exercise.duration && (
+                                {(exercise as any).duration && (
                                   <span>
                                     <Clock className="h-3 w-3 inline mr-1" />
-                                    {exercise.duration}
+                                    {(exercise as any).duration}
                                   </span>
                                 )}
                                 {exercise.time_seconds && (
@@ -313,8 +313,8 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                                     {exercise.time_seconds}s
                                   </span>
                                 )}
-                                {exercise.rest && (
-                                  <span>Rest: {exercise.rest}</span>
+                                {(exercise as any).rest && (
+                                  <span>Rest: {(exercise as any).rest}</span>
                                 )}
                                 {exercise.rest_seconds && (
                                   <span>Rest: {exercise.rest_seconds}s</span>
