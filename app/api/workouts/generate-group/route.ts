@@ -192,7 +192,10 @@ REMEMBER:
 - Efficient equipment usage and transitions`
 
     // Generate workout with AI
+    console.log('Initializing AI client for group workout generation...')
     const aiClient = new AIClient()
+    
+    console.log('Sending request to AI with prompt length:', prompt.length)
     const response = await aiClient.generateText(
       WORKOUT_SYSTEM_PROMPT,
       prompt,
@@ -202,6 +205,8 @@ REMEMBER:
         maxTokens: 6000
       }
     )
+    
+    console.log('AI response received, content length:', response?.content?.length || 0)
 
     // Parse the response
     let groupWorkout
@@ -279,11 +284,15 @@ REMEMBER:
     })
 
   } catch (error: any) {
-    console.error('Group workout generation error:', error.message)
+    console.error('=== GROUP WORKOUT GENERATION ERROR ===')
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    console.error('Full error:', error)
     
     return NextResponse.json({
       success: false,
-      error: error.message || 'Failed to generate group workout'
+      error: error.message || 'Failed to generate group workout',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     }, { status: 500 })
   }
 }

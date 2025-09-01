@@ -214,12 +214,22 @@ export default function BulkBuilderPage() {
           equipment: config.equipment && typeof config.equipment === 'string' ? config.equipment.split(',').map(e => e.trim()) : []
         }))
 
+        console.log('Attempting group workout generation with clients:', clientsData)
         generatedWorkouts = await generateGroupWorkouts(clientsData)
+        console.log('Group workout generation succeeded:', generatedWorkouts)
       } catch (err: any) {
-        console.error('Group workout generation error:', err)
+        console.error('Group workout generation error:', err.message || err)
         setError('Group workout generation failed. Switching to individual mode...')
+        setProgressMessage('⚠️ Switching to individual workouts...')
+        
         // Fallback to individual generation
-        generatedWorkouts = await generateIndividualWorkouts()
+        try {
+          generatedWorkouts = await generateIndividualWorkouts()
+          console.log('Individual workout generation succeeded:', generatedWorkouts)
+        } catch (individualErr: any) {
+          console.error('Individual workout generation also failed:', individualErr)
+          setError('Failed to generate workouts. Please try again.')
+        }
       }
     } else {
       // INDIVIDUAL WORKOUT GENERATION
@@ -251,7 +261,7 @@ export default function BulkBuilderPage() {
           duration: defaultSettings.duration,
           intensity: defaultSettings.intensity,
           focus: defaultSettings.focus,
-          gymEquipment: gymEquipment ? gymEquipment.split(',').map(e => e.trim()) : [],
+          gymEquipment: gymEquipment && typeof gymEquipment === 'string' && gymEquipment.trim() ? gymEquipment.split(',').map(e => e.trim()) : [],
           context: contexts.find(c => c.id === defaultSettings.contextId) || null,
           title: `Group Training - ${new Date().toLocaleDateString()}`
         }),
@@ -263,8 +273,14 @@ export default function BulkBuilderPage() {
 
       const data = await response.json()
       
-      if (!response.ok || !data.groupWorkout) {
-        throw new Error('Group workout generation failed')
+      if (!response.ok) {
+        console.error('Group workout API error:', data)
+        throw new Error(data.error || 'Group workout generation failed')
+      }
+      
+      if (!data.groupWorkout) {
+        console.error('No group workout in response:', data)
+        throw new Error('Invalid group workout response')
       }
       
       // Save individual workouts for each client
@@ -295,18 +311,21 @@ export default function BulkBuilderPage() {
           const saveResult = await saveResponse.json()
           
           if (saveResponse.ok && saveResult.workout) {
+            const workoutId = saveResult.workout.id || `group-workout-${Date.now()}-${individualWorkout.client_id}`
+            console.log(`Saved group workout for ${individualWorkout.client_name} with ID: ${workoutId}`)
             generatedWorkouts.push({
               success: true,
               client: individualWorkout.client_name,
-              workoutId: saveResult.workout.id || `group-workout-${Date.now()}-${individualWorkout.client_id}`,
+              workoutId: workoutId,
               title: `Group Training - ${individualWorkout.client_name}`,
               isGroupWorkout: true
             })
           } else {
+            console.error(`Failed to save group workout for ${individualWorkout.client_name}:`, saveResult)
             generatedWorkouts.push({
               success: false,
               client: individualWorkout.client_name,
-              error: 'Failed to save group workout'
+              error: saveResult?.error || 'Failed to save group workout'
             })
           }
         } catch (saveErr) {
@@ -389,6 +408,7 @@ export default function BulkBuilderPage() {
             console.error('Failed to save workout to database:', saveErr)
           }
           
+          console.log(`Individual workout generated for ${config.client?.full_name} with ID: ${data.workoutId}`)
           generatedWorkouts.push({
             success: true,
             client: config.client?.full_name,
