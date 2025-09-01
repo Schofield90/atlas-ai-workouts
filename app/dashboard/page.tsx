@@ -20,15 +20,36 @@ export default function DashboardPage() {
     try {
       // Load clients from Supabase
       const cloudClients = await clientService.getClients()
-      // For now, workouts are empty until we implement workout service
-      const cloudWorkouts: any[] = []
       
-      setClients(cloudClients.slice(0, 5))
-      setWorkouts(cloudWorkouts.slice(0, 5))
-      setStats({
-        clients: cloudClients.length,
-        workouts: cloudWorkouts.length
-      })
+      // Load workouts from Supabase
+      const { createClient } = await import('@/lib/db/client-fixed')
+      const supabase = createClient()
+      
+      const { data: cloudWorkouts, error } = await supabase
+        .from('workouts')
+        .select(`
+          *,
+          clients:workout_clients(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50) // Get more workouts to show recent ones
+      
+      if (error) {
+        console.error('Error loading workouts:', error)
+        setWorkouts([])
+        setStats({
+          clients: cloudClients.length,
+          workouts: 0
+        })
+      } else {
+        const validWorkouts = Array.isArray(cloudWorkouts) ? cloudWorkouts : []
+        setClients(cloudClients.slice(0, 5))
+        setWorkouts(validWorkouts.slice(0, 5))
+        setStats({
+          clients: cloudClients.length,
+          workouts: validWorkouts.length
+        })
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setClients([])
@@ -167,8 +188,16 @@ export default function DashboardPage() {
                       className="block p-3 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
                     >
                       <p className="font-medium text-gray-100">{workout.title}</p>
-                      <p className="text-sm text-gray-400">
-                        {workout.duration_minutes} min • {workout.exercises?.length || 0} exercises
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-400">
+                          {workout.plan?.total_time_minutes || 'N/A'} min • {workout.plan?.blocks?.[0]?.exercises?.length || 0} exercises
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {workout.clients?.full_name || 'No client'}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(workout.created_at).toLocaleDateString()}
                       </p>
                     </Link>
                   ))}
