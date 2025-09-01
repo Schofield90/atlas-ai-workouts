@@ -230,13 +230,6 @@ export default function BulkBuilderPage() {
     setShowResults(true)
     setGenerating(false)
     setProgressMessage('')
-    
-    // Redirect to bulk review page with all successful workout IDs
-    const successfulWorkouts = generatedWorkouts.filter(w => w.success && w.workoutId)
-    if (successfulWorkouts.length > 0) {
-      const workoutIds = successfulWorkouts.map(w => w.workoutId).join(',')
-      router.push(`/workouts/bulk-review?ids=${workoutIds}`)
-    }
   }
 
   async function generateGroupWorkouts(clientsData: any[]) {
@@ -301,11 +294,11 @@ export default function BulkBuilderPage() {
           
           const saveResult = await saveResponse.json()
           
-          if (saveResponse.ok) {
+          if (saveResponse.ok && saveResult.workout) {
             generatedWorkouts.push({
               success: true,
               client: individualWorkout.client_name,
-              workoutId: saveResult.id,
+              workoutId: saveResult.workout.id || `group-workout-${Date.now()}-${individualWorkout.client_id}`,
               title: `Group Training - ${individualWorkout.client_name}`,
               isGroupWorkout: true
             })
@@ -948,13 +941,19 @@ export default function BulkBuilderPage() {
             <div className="mt-4 flex space-x-3">
               <button
                 onClick={() => {
+                  console.log('Review button clicked, results:', results)
                   const successfulWorkouts = results.filter(w => w.success && w.workoutId)
+                  console.log('Successful workouts:', successfulWorkouts)
                   if (successfulWorkouts.length > 0) {
                     const workoutIds = successfulWorkouts.map(w => w.workoutId).join(',')
+                    console.log('Navigating to bulk review with IDs:', workoutIds)
                     router.push(`/workouts/bulk-review?ids=${workoutIds}`)
+                  } else {
+                    alert('No successful workouts to review. Please check individual workout links above.')
                   }
                 }}
                 className="flex-1 py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-500"
+                disabled={!results.some(r => r.success && r.workoutId)}
               >
                 Review All Together →
               </button>
