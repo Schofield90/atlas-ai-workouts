@@ -61,11 +61,24 @@ export default function BulkBuilderPage() {
     loadContexts()
   }, [])
 
-  function loadClients() {
+  async function loadClients() {
     try {
-      const saved = localStorage.getItem('ai-workout-clients')
-      const savedClients = saved ? JSON.parse(saved) : []
-      const validClients = Array.isArray(savedClients) ? savedClients : []
+      // Load from Supabase database
+      const { createClient } = await import('@/lib/db/client-fixed')
+      const supabase = createClient()
+      
+      const { data, error } = await supabase
+        .from('workout_clients')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching clients from database:', error)
+        setClients([])
+        return
+      }
+
+      const validClients = Array.isArray(data) ? data : []
       setClients(validClients)
     } catch (error) {
       console.error('Error loading clients:', error)
@@ -73,28 +86,42 @@ export default function BulkBuilderPage() {
     }
   }
 
-  function loadContexts() {
+  async function loadContexts() {
     try {
-      const saved = localStorage.getItem('ai-workout-contexts')
-      const savedContexts = saved ? JSON.parse(saved) : []
-      const validContexts = Array.isArray(savedContexts) ? savedContexts : []
-      setContexts(validContexts)
-      
-      // Set the most recent context as default (sort by updated_at or created_at)
-      if (validContexts.length > 0) {
-        const sortedContexts = [...validContexts].sort((a, b) => {
-          const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
-          const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
-          return dateB - dateA // Most recent first
-        })
-        
-        setDefaultSettings(prev => ({
-          ...prev,
-          contextId: sortedContexts[0].id
-        }))
+      // First try to load SOPs from API
+      const response = await fetch('/api/sops')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.sops && data.sops.length > 0) {
+          // Convert SOPs to context format for the bulk builder
+          const sopContext = {
+            id: 'sops-context',
+            name: 'SOPs & Training Methods',
+            documents: data.sops.map((sop: any) => ({
+              id: sop.id,
+              name: sop.title,
+              content: sop.content,
+              category: sop.category
+            })),
+            textSections: data.sops.map((sop: any) => ({
+              id: sop.id,
+              title: sop.title,
+              content: sop.content,
+              category: 'sop'
+            })),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+          setContexts([sopContext])
+          setDefaultSettings(prev => ({
+            ...prev,
+            contextId: sopContext.id
+          }))
+          return
+        }
       }
     } catch (error) {
-      console.error('Error loading contexts:', error)
+      console.error('Error loading SOPs from API:', error)
       setContexts([])
     }
   }
@@ -177,10 +204,31 @@ export default function BulkBuilderPage() {
         const data = await response.json()
         
         if (response.ok) {
-          // Save workout to localStorage
-          const existingWorkouts = JSON.parse(localStorage.getItem('ai-workout-workouts') || '[]')
-          existingWorkouts.push(data.workout)
-          localStorage.setItem('ai-workout-workouts', JSON.stringify(existingWorkouts))
+          // Save workout to database
+          try {
+            const saveResponse = await fetch('/api/workouts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: data.workoutId,
+                title: config.title || 'Untitled Workout',
+                plan: data.workout.plan,
+                client_id: config.clientId || null,
+                source: data.workout.source || 'ai',
+                version: data.workout.version || 1
+              })
+            })
+            
+            const saveResult = await saveResponse.json()
+            
+            if (!saveResponse.ok) {
+              console.error('Error saving workout to database:', saveResult)
+            } else {
+              console.log('Workout saved to database:', saveResult)
+            }
+          } catch (saveErr) {
+            console.error('Failed to save workout to database:', saveErr)
+          }
           
           generatedWorkouts.push({
             success: true,
