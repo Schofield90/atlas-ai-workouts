@@ -277,23 +277,19 @@ CRITICAL REQUIREMENTS:
 
 4. The "constraints" field MUST list actual client limitations from their profile, NOT generic constraints.
 
-5. FLEXIBLE STRUCTURE: Create a workout that flows naturally. You can:
-   - Create any number of blocks with custom titles
-   - Organize exercises in a way that makes sense for the workout focus
-   - Include warm-up/cool-down exercises within the main flow if appropriate
-   - Use supersets, circuits, or straight sets as needed
-   - Name blocks based on their purpose (e.g., "Upper Body Circuit", "Core Finisher", "Strength Block", etc.)
+5. SINGLE BLOCK STRUCTURE: Create the ENTIRE workout in ONE block. Do NOT separate into warm-up, main, cool-down or any other segments. All exercises should be in a single continuous list.
 
-Generate a complete workout plan as JSON with this structure:
+Generate a complete workout plan as JSON with this EXACT structure:
 {
   "blocks": [
     { 
-      "title": "Your Custom Block Title", 
+      "title": "${title}", 
       "exercises": [
-        { "name": "Exercise Name", "sets": 3, "reps": "12-15", "rest_seconds": 60 }
+        { "name": "Exercise Name", "sets": 3, "reps": "12-15", "rest_seconds": 60 },
+        { "name": "Another Exercise", "sets": 3, "reps": "10-12", "rest_seconds": 60 }
+        // ALL exercises in ONE block - no separation
       ] 
     }
-    // Add as many blocks as needed with descriptive titles
   ],
   "training_goals": [${client.goals ? `"${client.goals}"` : '"General fitness"'}],
   "constraints": [${client.injuries && client.injuries !== '' && client.injuries !== 'none' && client.injuries !== 'No injuries reported' ? `"${client.injuries}"` : ''}],
@@ -420,36 +416,14 @@ CRITICAL:
       // Return a fallback workout that respects the requested focus
       console.error('Using fallback workout for focus:', focus)
       const fallbackExercises = getFallbackExercises(focus || 'full body', equipment)
-      const focusLower = (focus || '').toLowerCase()
       
-      // Create flexible workout blocks based on focus
-      let workoutBlocks = []
-      
-      // For focused workouts, create a single comprehensive block
-      if (focusLower.includes('bicep') || focusLower.includes('core') || focusLower.includes('tricep')) {
-        // Single focused block with all exercises
-        const blockTitle = focusLower.includes('bicep') && focusLower.includes('core') ? 
-          'Bicep & Core Circuit' : 
-          focusLower.includes('bicep') ? 'Bicep Strength' :
-          focusLower.includes('core') ? 'Core Training' :
-          focusLower.includes('tricep') ? 'Tricep Strength' : 
-          'Focused Training'
-        
-        workoutBlocks = [
-          {
-            title: blockTitle,
-            exercises: fallbackExercises
-          }
-        ]
-      } else {
-        // For full body or other workouts, create logical groupings
-        workoutBlocks = [
-          {
-            title: 'Full Body Circuit',
-            exercises: fallbackExercises
-          }
-        ]
-      }
+      // Create single block with all exercises
+      const workoutBlocks = [
+        {
+          title: title,
+          exercises: fallbackExercises
+        }
+      ]
       
       
       workoutPlan = {

@@ -205,47 +205,11 @@ export class AIClient {
       // Generate exercises based on focus
       const mainExercises = this.getFallbackExercisesForFocus(focus)
       
-      // Create flexible workout blocks
-      const focusLower = focus.toLowerCase()
-      let blocks = []
-      
-      // Create appropriate block title based on focus
-      if (focusLower.includes('bicep') && focusLower.includes('core')) {
-        blocks = [{
-          title: "Bicep & Core Circuit",
-          exercises: mainExercises
-        }]
-      } else if (focusLower.includes('bicep')) {
-        blocks = [{
-          title: "Bicep Strength Training",
-          exercises: mainExercises
-        }]
-      } else if (focusLower.includes('tricep')) {
-        blocks = [{
-          title: "Tricep Strength Training",
-          exercises: mainExercises
-        }]
-      } else if (focusLower.includes('core')) {
-        blocks = [{
-          title: "Core Workout",
-          exercises: mainExercises
-        }]
-      } else if (focusLower.includes('chest')) {
-        blocks = [{
-          title: "Chest Workout",
-          exercises: mainExercises
-        }]
-      } else if (focusLower.includes('leg')) {
-        blocks = [{
-          title: "Lower Body Training",
-          exercises: mainExercises
-        }]
-      } else {
-        blocks = [{
-          title: "Full Body Workout",
-          exercises: mainExercises
-        }]
-      }
+      // Create single block with all exercises - no segmentation
+      const blocks = [{
+        title: "Workout",
+        exercises: mainExercises
+      }]
       
       return {
         content: JSON.stringify({
