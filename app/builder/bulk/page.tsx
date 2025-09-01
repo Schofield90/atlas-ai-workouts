@@ -54,6 +54,7 @@ export default function BulkBuilderPage() {
   const [gymEquipment, setGymEquipment] = useState('')
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
+  const [progressMessage, setProgressMessage] = useState('')
   const [results, setResults] = useState<any[]>([])
   const [showResults, setShowResults] = useState(false)
   const [error, setError] = useState('')
@@ -203,6 +204,7 @@ export default function BulkBuilderPage() {
       // GROUP WORKOUT GENERATION
       try {
         setProgress({ current: 1, total: 1 })
+        setProgressMessage('🤖 AI is analyzing group requirements and equipment...')
         
         const clientsData = workoutConfigs.map(config => ({
           id: config.clientId,
@@ -212,6 +214,10 @@ export default function BulkBuilderPage() {
           equipment: config.equipment ? config.equipment.split(',').map(e => e.trim()) : []
         }))
 
+        // Create abort controller for timeout
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+        
         const response = await fetch('/api/workouts/generate-group', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -224,7 +230,11 @@ export default function BulkBuilderPage() {
             context: contexts.find(c => c.id === defaultSettings.contextId) || null,
             title: `Group Training - ${new Date().toLocaleDateString()}`
           }),
+          signal: controller.signal
         })
+        
+        clearTimeout(timeoutId)
+        setProgressMessage('✅ AI generated group workout! Saving to database...')
 
         const data = await response.json()
         
@@ -284,10 +294,18 @@ export default function BulkBuilderPage() {
           console.warn('Group workout generation failed, falling back to individual workouts')
           return await generateIndividualWorkouts()
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Group workout generation error:', err)
+        
+        // Handle timeout error specifically
+        if (err.name === 'AbortError') {
+          console.warn('Group workout generation timed out, falling back to individual workouts')
+          setError('AI group generation took too long. Switching to individual mode...')
+        }
+        
         // Fallback to individual generation
-        return await generateIndividualWorkouts()
+        await generateIndividualWorkouts()
+        return generatedWorkouts
       }
     } else {
       // INDIVIDUAL WORKOUT GENERATION
@@ -297,6 +315,7 @@ export default function BulkBuilderPage() {
     setResults(generatedWorkouts)
     setShowResults(true)
     setGenerating(false)
+    setProgressMessage('')
   }
 
   async function generateIndividualWorkouts() {
@@ -802,7 +821,13 @@ export default function BulkBuilderPage() {
               {generating ? (
                 <>
                   <Loader2 className="inline h-5 w-5 mr-2 animate-spin" />
-                  Generating {progress.current} of {progress.total}...
+                  {groupMode ? (
+                    <>
+                      {progressMessage || 'Generating AI Group Workout (this may take 15-20 seconds)...'}
+                    </>
+                  ) : (
+                    <>Generating {progress.current} of {progress.total}...</>
+                  )}
                 </>
               ) : (
                 <>
