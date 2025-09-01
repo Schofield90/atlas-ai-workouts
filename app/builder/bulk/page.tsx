@@ -214,98 +214,22 @@ export default function BulkBuilderPage() {
           equipment: config.equipment ? config.equipment.split(',').map(e => e.trim()) : []
         }))
 
-        // Create abort controller for timeout
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
-        
-        const response = await fetch('/api/workouts/generate-group', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clients: clientsData,
-            duration: defaultSettings.duration,
-            intensity: defaultSettings.intensity,
-            focus: defaultSettings.focus,
-            gymEquipment: gymEquipment ? gymEquipment.split(',').map(e => e.trim()) : [],
-            context: contexts.find(c => c.id === defaultSettings.contextId) || null,
-            title: `Group Training - ${new Date().toLocaleDateString()}`
-          }),
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        setProgressMessage('✅ AI generated group workout! Saving to database...')
-
-        const data = await response.json()
-        
-        if (response.ok && data.groupWorkout) {
-          // Save individual workouts for each client
-          for (const individualWorkout of data.groupWorkout.individual_workouts) {
-            try {
-              const saveResponse = await fetch('/api/workouts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  id: `group-workout-${Date.now()}-${individualWorkout.client_id}`,
-                  title: `Group Training - ${individualWorkout.client_name}`,
-                  plan: {
-                    blocks: individualWorkout.blocks,
-                    training_goals: individualWorkout.training_goals,
-                    constraints: individualWorkout.constraints,
-                    intensity_target: defaultSettings.intensity,
-                    total_time_minutes: defaultSettings.duration,
-                    equipment_assigned: individualWorkout.equipment_assigned,
-                    shared_rehab: data.groupWorkout.shared_rehab_exercises,
-                    group_notes: data.groupWorkout.group_notes
-                  },
-                  client_id: individualWorkout.client_id,
-                  source: 'group-ai',
-                  version: 1
-                })
-              })
-              
-              const saveResult = await saveResponse.json()
-              
-              if (saveResponse.ok) {
-                generatedWorkouts.push({
-                  success: true,
-                  client: individualWorkout.client_name,
-                  workoutId: saveResult.id,
-                  title: `Group Training - ${individualWorkout.client_name}`,
-                  isGroupWorkout: true
-                })
-              } else {
-                generatedWorkouts.push({
-                  success: false,
-                  client: individualWorkout.client_name,
-                  error: 'Failed to save group workout'
-                })
-              }
-            } catch (saveErr) {
-              generatedWorkouts.push({
-                success: false,
-                client: individualWorkout.client_name,
-                error: 'Failed to save workout to database'
-              })
-            }
-          }
-        } else {
-          // If group generation fails, fall back to individual generation
-          console.warn('Group workout generation failed, falling back to individual workouts')
-          return await generateIndividualWorkouts()
-        }
+        const generatedWorkouts = await generateGroupWorkouts(clientsData)
+        setResults(generatedWorkouts)
+        setShowResults(true)
+        setGenerating(false)
+        setProgressMessage('')
+        return
       } catch (err: any) {
         console.error('Group workout generation error:', err)
-        
-        // Handle timeout error specifically
-        if (err.name === 'AbortError') {
-          console.warn('Group workout generation timed out, falling back to individual workouts')
-          setError('AI group generation took too long. Switching to individual mode...')
-        }
-        
+        setError('Group workout generation failed. Switching to individual mode...')
         // Fallback to individual generation
-        await generateIndividualWorkouts()
-        return generatedWorkouts
+        const individualWorkouts = await generateIndividualWorkouts()
+        setResults(individualWorkouts)
+        setShowResults(true)
+        setGenerating(false)
+        setProgressMessage('')
+        return
       }
     } else {
       // INDIVIDUAL WORKOUT GENERATION
@@ -316,6 +240,111 @@ export default function BulkBuilderPage() {
     setShowResults(true)
     setGenerating(false)
     setProgressMessage('')
+  }
+
+  async function generateGroupWorkouts(clientsData: any[]) {
+    const generatedWorkouts = []
+    
+    // Create abort controller for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      console.log('Aborting group workout request due to timeout')
+      controller.abort()
+    }, 30000) // 30 second timeout
+    
+    try {
+      const response = await fetch('/api/workouts/generate-group', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clients: clientsData,
+          duration: defaultSettings.duration,
+          intensity: defaultSettings.intensity,
+          focus: defaultSettings.focus,
+          gymEquipment: gymEquipment ? gymEquipment.split(',').map(e => e.trim()) : [],
+          context: contexts.find(c => c.id === defaultSettings.contextId) || null,
+          title: `Group Training - ${new Date().toLocaleDateString()}`
+        }),
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      setProgressMessage('✅ AI generated group workout! Saving to database...')
+
+      const data = await response.json()
+      
+      if (!response.ok || !data.groupWorkout) {
+        throw new Error('Group workout generation failed')
+      }
+      
+      // Save individual workouts for each client
+      for (const individualWorkout of data.groupWorkout.individual_workouts) {
+        try {
+          const saveResponse = await fetch('/api/workouts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: `group-workout-${Date.now()}-${individualWorkout.client_id}`,
+              title: `Group Training - ${individualWorkout.client_name}`,
+              plan: {
+                blocks: individualWorkout.blocks,
+                training_goals: individualWorkout.training_goals,
+                constraints: individualWorkout.constraints,
+                intensity_target: defaultSettings.intensity,
+                total_time_minutes: defaultSettings.duration,
+                equipment_assigned: individualWorkout.equipment_assigned,
+                shared_rehab: data.groupWorkout.shared_rehab_exercises,
+                group_notes: data.groupWorkout.group_notes
+              },
+              client_id: individualWorkout.client_id,
+              source: 'group-ai',
+              version: 1
+            })
+          })
+          
+          const saveResult = await saveResponse.json()
+          
+          if (saveResponse.ok) {
+            generatedWorkouts.push({
+              success: true,
+              client: individualWorkout.client_name,
+              workoutId: saveResult.id,
+              title: `Group Training - ${individualWorkout.client_name}`,
+              isGroupWorkout: true
+            })
+          } else {
+            generatedWorkouts.push({
+              success: false,
+              client: individualWorkout.client_name,
+              error: 'Failed to save group workout'
+            })
+          }
+        } catch (saveErr) {
+          generatedWorkouts.push({
+            success: false,
+            client: individualWorkout.client_name,
+            error: 'Failed to save workout to database'
+          })
+        }
+      }
+      
+      return generatedWorkouts
+      
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId)
+      
+      if (fetchErr.name === 'AbortError') {
+        console.warn('Group workout generation timed out')
+        setError('AI took too long (>30s). Switching to individual mode...')
+        setProgressMessage('⚠️ Timeout - switching to individual workouts...')
+      } else {
+        console.error('Group workout fetch error:', fetchErr)
+        setError('Network error during group generation. Switching to individual mode...')
+        setProgressMessage('⚠️ Network error - switching to individual workouts...')
+      }
+      
+      throw fetchErr
+    }
   }
 
   async function generateIndividualWorkouts() {
