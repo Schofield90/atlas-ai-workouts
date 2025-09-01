@@ -66,6 +66,7 @@ export default function BulkBuilderPage() {
   // Helper to check if selected context contains equipment information
   const hasEquipmentContext = () => {
     const selectedContext = contexts.find(c => c.id === defaultSettings.contextId)
+    
     if (!selectedContext || !selectedContext.textSections) return false
     
     return selectedContext.textSections.some((section: any) => 
@@ -119,7 +120,7 @@ export default function BulkBuilderPage() {
               id: sop.id,
               title: sop.title,
               content: sop.content,
-              category: 'sop'
+              category: sop.category || 'sop'
             })),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
