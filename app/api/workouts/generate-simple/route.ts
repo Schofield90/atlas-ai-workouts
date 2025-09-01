@@ -264,10 +264,9 @@ Focus: ${focus || 'full body'}
 
 CRITICAL REQUIREMENTS:
 1. This workout MUST focus on ${focus || 'full body'}. 
-   ${focus && focus.toLowerCase().includes('bicep') ? '- Include ONLY bicep exercises like curls, hammer curls, concentration curls, etc.' : ''}
-   ${focus && focus.toLowerCase().includes('core') ? '- Include ONLY core exercises like planks, crunches, russian twists, mountain climbers, etc.' : ''}
+   ${focus && focus.toLowerCase().includes('bicep') ? '- Include bicep-focused exercises like curls, hammer curls, concentration curls, etc.' : ''}
+   ${focus && focus.toLowerCase().includes('core') ? '- Include core-focused exercises like planks, crunches, russian twists, mountain climbers, etc.' : ''}
    ${focus && focus.toLowerCase().includes('bicep') && focus.toLowerCase().includes('core') ? '- Mix bicep exercises (curls) with core exercises (planks, crunches) evenly' : ''}
-   - The main workout block MUST contain 4-6 exercises targeting the requested muscle groups
 
 2. MUST respect client injuries/limitations: ${client.injuries || 'none'}
    - If client has injuries, avoid exercises that could aggravate them
@@ -278,27 +277,23 @@ CRITICAL REQUIREMENTS:
 
 4. The "constraints" field MUST list actual client limitations from their profile, NOT generic constraints.
 
-Generate a complete workout plan as JSON with this EXACT structure:
+5. FLEXIBLE STRUCTURE: Create a workout that flows naturally. You can:
+   - Create any number of blocks with custom titles
+   - Organize exercises in a way that makes sense for the workout focus
+   - Include warm-up/cool-down exercises within the main flow if appropriate
+   - Use supersets, circuits, or straight sets as needed
+   - Name blocks based on their purpose (e.g., "Upper Body Circuit", "Core Finisher", "Strength Block", etc.)
+
+Generate a complete workout plan as JSON with this structure:
 {
   "blocks": [
     { 
-      "title": "Warm-up", 
-      "exercises": [
-        { "name": "Exercise Name", "sets": 2, "reps": "10", "rest_seconds": 30 }
-      ] 
-    },
-    { 
-      "title": "Main Workout", 
+      "title": "Your Custom Block Title", 
       "exercises": [
         { "name": "Exercise Name", "sets": 3, "reps": "12-15", "rest_seconds": 60 }
       ] 
-    },
-    { 
-      "title": "Cool-down", 
-      "exercises": [
-        { "name": "Stretch Name", "sets": 1, "time_seconds": 30 }
-      ] 
     }
+    // Add as many blocks as needed with descriptive titles
   ],
   "training_goals": [${client.goals ? `"${client.goals}"` : '"General fitness"'}],
   "constraints": [${client.injuries && client.injuries !== '' && client.injuries !== 'none' && client.injuries !== 'No injuries reported' ? `"${client.injuries}"` : ''}],
@@ -425,71 +420,43 @@ CRITICAL:
       // Return a fallback workout that respects the requested focus
       console.error('Using fallback workout for focus:', focus)
       const fallbackExercises = getFallbackExercises(focus || 'full body', equipment)
-      
-      // Create warm-up exercises based on focus
-      let warmupExercises = []
       const focusLower = (focus || '').toLowerCase()
       
-      if (focusLower.includes('bicep') || focusLower.includes('arm')) {
-        warmupExercises = [
-          { name: 'Arm Circles', sets: 2, reps: '10 each direction', rest_seconds: 30 },
-          { name: 'Wrist Rotations', sets: 2, reps: '10 each direction', rest_seconds: 30 },
-          { name: 'Light Arm Swings', sets: 2, reps: '15', rest_seconds: 30 }
-        ]
-      } else if (focusLower.includes('core')) {
-        warmupExercises = [
-          { name: 'Cat-Cow Stretch', sets: 2, reps: '10', rest_seconds: 30 },
-          { name: 'Dead Bug (slow)', sets: 2, reps: '5 each side', rest_seconds: 30 },
-          { name: 'Bird Dog', sets: 2, reps: '5 each side', rest_seconds: 30 }
+      // Create flexible workout blocks based on focus
+      let workoutBlocks = []
+      
+      // For focused workouts, create a single comprehensive block
+      if (focusLower.includes('bicep') || focusLower.includes('core') || focusLower.includes('tricep')) {
+        // Single focused block with all exercises
+        const blockTitle = focusLower.includes('bicep') && focusLower.includes('core') ? 
+          'Bicep & Core Circuit' : 
+          focusLower.includes('bicep') ? 'Bicep Strength' :
+          focusLower.includes('core') ? 'Core Training' :
+          focusLower.includes('tricep') ? 'Tricep Strength' : 
+          'Focused Training'
+        
+        workoutBlocks = [
+          {
+            title: blockTitle,
+            exercises: fallbackExercises
+          }
         ]
       } else {
-        warmupExercises = [
-          { name: 'Arm Circles', sets: 2, reps: '10 each direction', rest_seconds: 30 },
-          { name: 'Torso Twists', sets: 2, reps: '10', rest_seconds: 30 },
-          { name: 'Light Cardio', sets: 1, time_seconds: 120 }
+        // For full body or other workouts, create logical groupings
+        workoutBlocks = [
+          {
+            title: 'Full Body Circuit',
+            exercises: fallbackExercises
+          }
         ]
       }
       
-      // Create cool-down based on focus
-      let cooldownExercises = []
-      if (focusLower.includes('bicep') || focusLower.includes('arm')) {
-        cooldownExercises = [
-          { name: 'Bicep Stretch', sets: 1, time_seconds: 30, notes: ['Each arm'] },
-          { name: 'Tricep Stretch', sets: 1, time_seconds: 30, notes: ['Each arm'] },
-          { name: 'Wrist Flexor Stretch', sets: 1, time_seconds: 30 }
-        ]
-      } else if (focusLower.includes('core')) {
-        cooldownExercises = [
-          { name: 'Child\'s Pose', sets: 1, time_seconds: 45 },
-          { name: 'Seated Forward Fold', sets: 1, time_seconds: 45 },
-          { name: 'Supine Spinal Twist', sets: 1, time_seconds: 30, notes: ['Each side'] }
-        ]
-      } else {
-        cooldownExercises = [
-          { name: 'Arm Stretches', sets: 1, time_seconds: 30, notes: ['Each arm'] },
-          { name: 'Shoulder Stretches', sets: 1, time_seconds: 30, notes: ['Each side'] },
-          { name: 'Deep Breathing', sets: 1, time_seconds: 60 }
-        ]
-      }
       
       workoutPlan = {
         client_id: clientId || 'guest',
         title: title,
         program_phase: 'General Training',
-        blocks: [
-          {
-            title: 'Warm-up',
-            exercises: warmupExercises
-          },
-          {
-            title: `Main Workout - ${focus || 'Full Body'}`,
-            exercises: fallbackExercises
-          },
-          {
-            title: 'Cool-down',
-            exercises: cooldownExercises
-          }
-        ],
+        blocks: workoutBlocks,
         total_time_minutes: duration,
         training_goals: [client.goals || `${focus || 'General'} training`],
         constraints: (client.injuries && client.injuries !== 'none' && client.injuries !== 'No injuries reported') ? [client.injuries] : [],

@@ -205,31 +205,52 @@ export class AIClient {
       // Generate exercises based on focus
       const mainExercises = this.getFallbackExercisesForFocus(focus)
       
+      // Create flexible workout blocks
+      const focusLower = focus.toLowerCase()
+      let blocks = []
+      
+      // Create appropriate block title based on focus
+      if (focusLower.includes('bicep') && focusLower.includes('core')) {
+        blocks = [{
+          title: "Bicep & Core Circuit",
+          exercises: mainExercises
+        }]
+      } else if (focusLower.includes('bicep')) {
+        blocks = [{
+          title: "Bicep Strength Training",
+          exercises: mainExercises
+        }]
+      } else if (focusLower.includes('tricep')) {
+        blocks = [{
+          title: "Tricep Strength Training",
+          exercises: mainExercises
+        }]
+      } else if (focusLower.includes('core')) {
+        blocks = [{
+          title: "Core Workout",
+          exercises: mainExercises
+        }]
+      } else if (focusLower.includes('chest')) {
+        blocks = [{
+          title: "Chest Workout",
+          exercises: mainExercises
+        }]
+      } else if (focusLower.includes('leg')) {
+        blocks = [{
+          title: "Lower Body Training",
+          exercises: mainExercises
+        }]
+      } else {
+        blocks = [{
+          title: "Full Body Workout",
+          exercises: mainExercises
+        }]
+      }
+      
       return {
         content: JSON.stringify({
           program_phase: "General Training",
-          blocks: [
-            {
-              title: "Warm-up",
-              exercises: [
-                { name: "Arm Circles", sets: 2, reps: "10 each direction", rest_seconds: 30 },
-                { name: "Wrist Rotations", sets: 2, reps: "10 each direction", rest_seconds: 30 },
-                { name: "Light Cardio", sets: 1, time_seconds: 120, rest_seconds: 30 }
-              ]
-            },
-            {
-              title: `Main Workout - ${focus}`,
-              exercises: mainExercises
-            },
-            {
-              title: "Cool-down",
-              exercises: [
-                { name: "Arm Stretches", sets: 1, time_seconds: 30, notes: ["Each arm"] },
-                { name: "Shoulder Stretches", sets: 1, time_seconds: 30, notes: ["Each side"] },
-                { name: "Deep Breathing", sets: 1, time_seconds: 60 }
-              ]
-            }
-          ],
+          blocks: blocks,
           training_goals: [`${focus} training`, "Strength", "Muscle development"],
           constraints: [],
           intensity_target: "moderate",
