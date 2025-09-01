@@ -211,7 +211,7 @@ export default function BulkBuilderPage() {
           full_name: config.client?.full_name || 'Unknown',
           goals: config.client?.goals,
           injuries: config.client?.injuries,
-          equipment: config.equipment ? config.equipment.split(',').map(e => e.trim()) : []
+          equipment: config.equipment && typeof config.equipment === 'string' ? config.equipment.split(',').map(e => e.trim()) : []
         }))
 
         generatedWorkouts = await generateGroupWorkouts(clientsData)
@@ -230,6 +230,13 @@ export default function BulkBuilderPage() {
     setShowResults(true)
     setGenerating(false)
     setProgressMessage('')
+    
+    // Redirect to bulk review page with all successful workout IDs
+    const successfulWorkouts = generatedWorkouts.filter(w => w.success && w.workoutId)
+    if (successfulWorkouts.length > 0) {
+      const workoutIds = successfulWorkouts.map(w => w.workoutId).join(',')
+      router.push(`/workouts/bulk-review?ids=${workoutIds}`)
+    }
   }
 
   async function generateGroupWorkouts(clientsData: any[]) {
@@ -355,7 +362,7 @@ export default function BulkBuilderPage() {
             duration: config.duration,
             intensity: config.intensity,
             focus: config.focus,
-            equipment: config.equipment ? config.equipment.split(',').map(e => e.trim()) : [],
+            equipment: config.equipment && typeof config.equipment === 'string' ? config.equipment.split(',').map(e => e.trim()) : [],
             context: contexts.find(c => c.id === config.contextId) || null,
           }),
         })
@@ -940,10 +947,16 @@ export default function BulkBuilderPage() {
             
             <div className="mt-4 flex space-x-3">
               <button
-                onClick={() => router.push('/workouts')}
+                onClick={() => {
+                  const successfulWorkouts = results.filter(w => w.success && w.workoutId)
+                  if (successfulWorkouts.length > 0) {
+                    const workoutIds = successfulWorkouts.map(w => w.workoutId).join(',')
+                    router.push(`/workouts/bulk-review?ids=${workoutIds}`)
+                  }
+                }}
                 className="flex-1 py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-500"
               >
-                View All Workouts
+                Review All Together →
               </button>
               <button
                 onClick={() => {
