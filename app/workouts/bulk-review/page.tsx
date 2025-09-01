@@ -65,33 +65,60 @@ function BulkReviewContent() {
   }, [searchParams])
 
   async function loadWorkouts(ids: string[]) {
+    console.log('Loading workouts with IDs:', ids)
     try {
       const promises = ids.map(id => 
-        fetch(`/api/workouts?id=${id}`).then(res => res.json())
+        fetch(`/api/workouts?id=${id}`)
+          .then(res => {
+            if (!res.ok) {
+              console.error(`Failed to fetch workout ${id}:`, res.status)
+            }
+            return res.json()
+          })
+          .catch(err => {
+            console.error(`Error fetching workout ${id}:`, err)
+            return { success: false, error: err.message }
+          })
       )
       
       const results = await Promise.all(promises)
-      const loadedWorkouts = results
-        .filter(r => r.success && r.workout)
-        .map(r => ({
-          ...r.workout,
-          blocks: r.workout.plan?.blocks || [],
-          training_goals: r.workout.plan?.training_goals || [],
-          constraints: r.workout.plan?.constraints || [],
-          equipment_assigned: r.workout.plan?.equipment_assigned || [],
-          isGroupWorkout: r.workout.plan?.group_title ? true : false
-        }))
+      console.log('Fetched workout results:', results)
       
+      const loadedWorkouts = results
+        .filter(r => {
+          if (!r.success || !r.workout) {
+            console.warn('Skipping invalid workout result:', r)
+            return false
+          }
+          return true
+        })
+        .map(r => {
+          const workout = {
+            ...r.workout,
+            client_name: r.workout.workout_clients?.full_name || r.workout.client_name || 'Unknown',
+            blocks: r.workout.plan?.blocks || [],
+            training_goals: r.workout.plan?.training_goals || [],
+            constraints: r.workout.plan?.constraints || [],
+            equipment_assigned: r.workout.plan?.equipment_assigned || [],
+            isGroupWorkout: r.workout.source === 'group-ai' || r.workout.plan?.group_title ? true : false
+          }
+          console.log('Processed workout:', workout.id, workout.client_name)
+          return workout
+        })
+      
+      console.log(`Loaded ${loadedWorkouts.length} workouts successfully`)
       setWorkouts(loadedWorkouts)
       
       // Extract shared rehab exercises if it's a group workout
       if (loadedWorkouts.length > 0 && loadedWorkouts[0].plan?.shared_rehab_exercises) {
         setSharedRehab(loadedWorkouts[0].plan.shared_rehab_exercises)
+        console.log('Found shared rehab exercises:', loadedWorkouts[0].plan.shared_rehab_exercises)
       }
       
       // Extract group notes if available
       if (loadedWorkouts.length > 0 && loadedWorkouts[0].plan?.group_notes) {
         setGroupNotes(loadedWorkouts[0].plan.group_notes)
+        console.log('Found group notes:', loadedWorkouts[0].plan.group_notes)
       }
     } catch (error) {
       console.error('Error loading workouts:', error)

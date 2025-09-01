@@ -1,11 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/db/client-fixed'
 
-// GET - Fetch all workouts
+// GET - Fetch all workouts or specific workout by ID
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
+    const { searchParams } = new URL(request.url)
+    const workoutId = searchParams.get('id')
     
+    // If ID is provided, fetch specific workout
+    if (workoutId) {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(`
+          *,
+          workout_clients (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('id', workoutId)
+        .single()
+      
+      if (error) {
+        console.error('Database error fetching workout:', error)
+        return NextResponse.json({ 
+          error: 'Failed to fetch workout',
+          details: error.message,
+          success: false
+        }, { status: error.code === 'PGRST116' ? 404 : 500 })
+      }
+      
+      return NextResponse.json({ 
+        success: true,
+        workout: data
+      })
+    }
+    
+    // Otherwise fetch all workouts
     const { data, error } = await supabase
       .from('workout_sessions')
       .select(`
