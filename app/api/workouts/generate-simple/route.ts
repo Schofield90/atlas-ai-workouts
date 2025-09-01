@@ -21,6 +21,40 @@ function getFallbackExercises(focus: string, equipment: string[] = []) {
   const focusLower = focus.toLowerCase()
   const hasEquipment = equipment.length > 0
   
+  // Core exercises
+  if (focusLower.includes('core') || focusLower.includes('abs')) {
+    return [
+      { name: 'Plank', sets: 3, time_seconds: 45, rest_seconds: 30 },
+      { name: 'Russian Twists', sets: 3, reps: '20', rest_seconds: 45 },
+      { name: 'Dead Bug', sets: 3, reps: '10 each side', rest_seconds: 45 },
+      { name: 'Mountain Climbers', sets: 3, reps: '20', rest_seconds: 60 },
+      { name: 'Bicycle Crunches', sets: 3, reps: '15 each side', rest_seconds: 45 },
+      { name: 'Hollow Body Hold', sets: 3, time_seconds: 30, rest_seconds: 45 }
+    ]
+  }
+  
+  // Bicep AND Core combination
+  if (focusLower.includes('bicep') && focusLower.includes('core')) {
+    if (hasEquipment && (equipment.includes('dumbbells') || equipment.includes('barbell'))) {
+      return [
+        { name: 'Dumbbell Bicep Curls', sets: 3, reps: '12-15', rest_seconds: 60 },
+        { name: 'Plank', sets: 3, time_seconds: 45, rest_seconds: 45 },
+        { name: 'Hammer Curls', sets: 3, reps: '10-12', rest_seconds: 60 },
+        { name: 'Russian Twists with weight', sets: 3, reps: '20', rest_seconds: 45 },
+        { name: 'Concentration Curls', sets: 3, reps: '12-15', rest_seconds: 45 },
+        { name: 'Dead Bug', sets: 3, reps: '10 each side', rest_seconds: 45 }
+      ]
+    }
+    return [
+      { name: 'Chin-ups (underhand grip)', sets: 3, reps: '8-12', rest_seconds: 90 },
+      { name: 'Plank', sets: 3, time_seconds: 45, rest_seconds: 45 },
+      { name: 'Resistance Band Curls', sets: 3, reps: '15-20', rest_seconds: 45 },
+      { name: 'Mountain Climbers', sets: 3, reps: '20', rest_seconds: 60 },
+      { name: 'Isometric Bicep Hold', sets: 3, time_seconds: 30, rest_seconds: 45 },
+      { name: 'Bicycle Crunches', sets: 3, reps: '15 each side', rest_seconds: 45 }
+    ]
+  }
+  
   // Bicep exercises
   if (focusLower.includes('bicep')) {
     if (hasEquipment && (equipment.includes('dumbbells') || equipment.includes('barbell'))) {
@@ -202,7 +236,11 @@ Intensity: ${intensity}
 Focus: ${focus || 'full body'}
 
 CRITICAL REQUIREMENTS:
-1. This workout MUST focus on ${focus || 'full body'}. If the focus is a specific muscle group (like biceps, triceps, chest, etc.), the main workout block MUST contain exercises targeting those specific muscles.
+1. This workout MUST focus on ${focus || 'full body'}. 
+   ${focus && focus.toLowerCase().includes('bicep') ? '- Include ONLY bicep exercises like curls, hammer curls, concentration curls, etc.' : ''}
+   ${focus && focus.toLowerCase().includes('core') ? '- Include ONLY core exercises like planks, crunches, russian twists, mountain climbers, etc.' : ''}
+   ${focus && focus.toLowerCase().includes('bicep') && focus.toLowerCase().includes('core') ? '- Mix bicep exercises (curls) with core exercises (planks, crunches) evenly' : ''}
+   - The main workout block MUST contain 4-6 exercises targeting the requested muscle groups
 
 2. MUST respect client injuries/limitations: ${client.injuries || 'none'}
    - If client has injuries, avoid exercises that could aggravate them
@@ -250,23 +288,33 @@ CRITICAL:
     console.log('Focus requested:', focus || 'full body')
     console.log('Equipment:', equipment)
     console.log('Prompt length:', prompt.length, 'characters')
+    console.log('OpenAI key set:', !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-test-key-123')
+    console.log('Anthropic key set:', !!process.env.ANTHROPIC_API_KEY)
     
-    const aiClient = new AIClient(provider)
-    console.log('Using AI provider:', provider || process.env.AI_PROVIDER || 'auto')
-    console.log('Calling AI with prompt...')
-    
-    const response = await aiClient.generateText(
-      WORKOUT_SYSTEM_PROMPT,
-      prompt,
-      { 
-        temperature: 0.7,
-        jsonMode: true 
-      }
-    )
-    
-    console.log('AI responded successfully:', !!response.content)
-    console.log('Response length:', response.content?.length || 0, 'characters')
-    console.log('AI Provider used:', aiClient.getProvider ? aiClient.getProvider() : 'unknown')
+    let response
+    let aiClient: any
+    try {
+      aiClient = new AIClient(provider)
+      console.log('Using AI provider:', provider || process.env.AI_PROVIDER || 'auto')
+      console.log('Calling AI with prompt...')
+      
+      response = await aiClient.generateText(
+        WORKOUT_SYSTEM_PROMPT,
+        prompt,
+        { 
+          temperature: 0.7,
+          jsonMode: true 
+        }
+      )
+      
+      console.log('AI responded successfully:', !!response.content)
+      console.log('Response length:', response.content?.length || 0, 'characters')
+      console.log('AI Provider used:', aiClient.getProvider ? aiClient.getProvider() : 'unknown')
+    } catch (aiError: any) {
+      console.error('AI GENERATION FAILED:', aiError.message)
+      console.error('Stack:', aiError.stack)
+      throw new Error('AI generation failed - using fallback')
+    }
 
     // Parse and validate the generated workout
     let workoutPlan
@@ -285,8 +333,23 @@ CRITICAL:
         jsonContent = jsonMatch[0]
       }
       
-      const parsed = JSON.parse(jsonContent)
+      let parsed = JSON.parse(jsonContent)
       console.log('Parsed workout first block:', JSON.stringify(parsed.blocks?.[0], null, 2))
+      
+      // Check if the response has wrapped the blocks in another object
+      if (!parsed.blocks && parsed.exercises) {
+        console.warn('AI response has exercises array instead of blocks, converting...')
+        parsed = {
+          blocks: [
+            { title: 'Warm-up', exercises: [] },
+            { title: 'Main Workout', exercises: parsed.exercises },
+            { title: 'Cool-down', exercises: [] }
+          ],
+          training_goals: parsed.training_goals || [client.goals || 'General fitness'],
+          constraints: parsed.constraints || [],
+          intensity_target: parsed.intensity_target || intensity
+        }
+      }
       
       // Validate and fix exercise structure
       if (parsed.blocks && Array.isArray(parsed.blocks)) {
@@ -336,6 +399,52 @@ CRITICAL:
       console.error('Using fallback workout for focus:', focus)
       const fallbackExercises = getFallbackExercises(focus || 'full body', equipment)
       
+      // Create warm-up exercises based on focus
+      let warmupExercises = []
+      const focusLower = (focus || '').toLowerCase()
+      
+      if (focusLower.includes('bicep') || focusLower.includes('arm')) {
+        warmupExercises = [
+          { name: 'Arm Circles', sets: 2, reps: '10 each direction', rest_seconds: 30 },
+          { name: 'Wrist Rotations', sets: 2, reps: '10 each direction', rest_seconds: 30 },
+          { name: 'Light Arm Swings', sets: 2, reps: '15', rest_seconds: 30 }
+        ]
+      } else if (focusLower.includes('core')) {
+        warmupExercises = [
+          { name: 'Cat-Cow Stretch', sets: 2, reps: '10', rest_seconds: 30 },
+          { name: 'Dead Bug (slow)', sets: 2, reps: '5 each side', rest_seconds: 30 },
+          { name: 'Bird Dog', sets: 2, reps: '5 each side', rest_seconds: 30 }
+        ]
+      } else {
+        warmupExercises = [
+          { name: 'Arm Circles', sets: 2, reps: '10 each direction', rest_seconds: 30 },
+          { name: 'Torso Twists', sets: 2, reps: '10', rest_seconds: 30 },
+          { name: 'Light Cardio', sets: 1, time_seconds: 120 }
+        ]
+      }
+      
+      // Create cool-down based on focus
+      let cooldownExercises = []
+      if (focusLower.includes('bicep') || focusLower.includes('arm')) {
+        cooldownExercises = [
+          { name: 'Bicep Stretch', sets: 1, time_seconds: 30, notes: ['Each arm'] },
+          { name: 'Tricep Stretch', sets: 1, time_seconds: 30, notes: ['Each arm'] },
+          { name: 'Wrist Flexor Stretch', sets: 1, time_seconds: 30 }
+        ]
+      } else if (focusLower.includes('core')) {
+        cooldownExercises = [
+          { name: 'Child\'s Pose', sets: 1, time_seconds: 45 },
+          { name: 'Seated Forward Fold', sets: 1, time_seconds: 45 },
+          { name: 'Supine Spinal Twist', sets: 1, time_seconds: 30, notes: ['Each side'] }
+        ]
+      } else {
+        cooldownExercises = [
+          { name: 'Arm Stretches', sets: 1, time_seconds: 30, notes: ['Each arm'] },
+          { name: 'Shoulder Stretches', sets: 1, time_seconds: 30, notes: ['Each side'] },
+          { name: 'Deep Breathing', sets: 1, time_seconds: 60 }
+        ]
+      }
+      
       workoutPlan = {
         client_id: clientId || 'guest',
         title: title,
@@ -343,11 +452,7 @@ CRITICAL:
         blocks: [
           {
             title: 'Warm-up',
-            exercises: [
-              { name: 'Arm Circles', sets: 2, reps: '10 each direction' },
-              { name: 'Wrist Rotations', sets: 1, reps: '10 each direction' },
-              { name: 'Light Cardio', sets: 1, time_seconds: 120 }
-            ]
+            exercises: warmupExercises
           },
           {
             title: `Main Workout - ${focus || 'Full Body'}`,
@@ -355,11 +460,7 @@ CRITICAL:
           },
           {
             title: 'Cool-down',
-            exercises: [
-              { name: 'Arm Stretches', sets: 1, time_seconds: 30, notes: ['Each arm'] },
-              { name: 'Shoulder Stretches', sets: 1, time_seconds: 30, notes: ['Each side'] },
-              { name: 'Deep Breathing', sets: 1, time_seconds: 60 }
-            ]
+            exercises: cooldownExercises
           }
         ],
         total_time_minutes: duration,
@@ -385,10 +486,11 @@ CRITICAL:
       success: true,
       workoutId: workout.id,
       workout: workout,
-      provider: aiClient.getProvider ? aiClient.getProvider() : 'unknown'
+      provider: aiClient && aiClient.getProvider ? aiClient.getProvider() : 'unknown'
     })
-  } catch (error) {
-    console.error('Workout generation error:', error)
+  } catch (error: any) {
+    console.error('Workout generation error:', error.message)
+    console.error('Stack:', error.stack)
     
     // We can't access body here, so we return a basic fallback
     console.error('Critical error, using emergency fallback workout')
