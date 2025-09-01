@@ -21,12 +21,32 @@ export default function BuilderPage() {
   const [error, setError] = useState('')
   const [selectedContext, setSelectedContext] = useState<any>(null)
   const [contexts, setContexts] = useState<any[]>([])
+  const [feedbackData, setFeedbackData] = useState<any>(null)
   
   const clientDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadClients()
     loadContexts()
+    
+    // Check for regeneration with feedback
+    const params = new URLSearchParams(window.location.search)
+    const regenerateId = params.get('regenerate')
+    const clientId = params.get('client')
+    
+    if (regenerateId) {
+      const storedFeedback = sessionStorage.getItem('regenerate-with-feedback')
+      if (storedFeedback) {
+        const feedback = JSON.parse(storedFeedback)
+        setFeedbackData(feedback)
+        setTitle(feedback.workoutTitle + ' (Improved)')
+        if (clientId) {
+          setSelectedClient(clientId)
+        }
+        // Clear the session storage
+        sessionStorage.removeItem('regenerate-with-feedback')
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -135,6 +155,7 @@ export default function BuilderPage() {
           focus: focus || undefined,
           equipment: equipment ? equipment.split(',').map(e => e.trim()) : [],
           context: selectedContext || null,
+          feedback: feedbackData || null, // Include feedback data if regenerating
         }),
       })
 
@@ -218,6 +239,21 @@ export default function BuilderPage() {
             <Dumbbell className="h-8 w-8 text-blue-600 mr-3" />
             <h2 className="text-2xl font-bold text-gray-100">Create AI Workout</h2>
           </div>
+
+          {feedbackData && (
+            <div className="mb-4 p-4 bg-purple-900/20 border border-purple-600 rounded-lg">
+              <h3 className="font-semibold text-purple-300 mb-2">🔄 Regenerating with Feedback</h3>
+              <p className="text-sm text-gray-300">
+                <strong>Previous Rating:</strong> {feedbackData.rating}/5 ({feedbackData.rating === 1 ? 'Too Easy' : feedbackData.rating === 2 ? 'Easy' : feedbackData.rating === 3 ? 'Just Right' : feedbackData.rating === 4 ? 'Challenging' : 'Too Hard'})
+              </p>
+              <p className="text-sm text-gray-300 mt-1">
+                <strong>Feedback:</strong> "{feedbackData.feedback}"
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                The AI will use this feedback to create an improved version of the workout.
+              </p>
+            </div>
+          )}
 
           {error && (
             <div 

@@ -101,7 +101,7 @@ export default function WorkoutFeedback({
   if (submitted) {
     return (
       <div className="bg-gray-800 rounded-lg p-6 mt-6 border border-gray-700">
-        <div className="flex items-center space-x-3 text-green-400">
+        <div className="flex items-center space-x-3 text-green-400 mb-4">
           <Check className="w-6 h-6" />
           <div>
             <h3 className="text-lg font-semibold">Thank you for your feedback!</h3>
@@ -110,6 +110,33 @@ export default function WorkoutFeedback({
               {feedbackScope === 'client' ? `for ${clientName || 'this client'}` : 'for everyone'}.
             </p>
           </div>
+        </div>
+        
+        {/* Regenerate with Feedback Button */}
+        <div className="mt-4 pt-4 border-t border-gray-700">
+          <p className="text-sm text-gray-400 mb-3">
+            Want to see an improved version of this workout based on your feedback?
+          </p>
+          <button
+            onClick={async () => {
+              // Store feedback data in session storage for the regeneration
+              sessionStorage.setItem('regenerate-with-feedback', JSON.stringify({
+                workoutId,
+                workoutTitle,
+                clientId,
+                clientName,
+                rating,
+                feedback,
+                category,
+                scope: feedbackScope
+              }))
+              // Navigate to builder with the feedback
+              window.location.href = `/builder?regenerate=${workoutId}&client=${clientId || ''}`
+            }}
+            className="w-full py-2 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+          >
+            🔄 Regenerate Workout with Feedback
+          </button>
         </div>
       </div>
     )

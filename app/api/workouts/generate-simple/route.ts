@@ -125,7 +125,7 @@ function getFallbackExercises(focus: string, equipment: string[] = []) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context, provider } = body
+    const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context, provider, feedback } = body
 
     // Get client data directly from database to ensure accuracy
     let client = {
@@ -221,6 +221,33 @@ export async function POST(request: NextRequest) {
         })
       }
       
+      prompt += `---\n\n`
+    }
+    
+    // Add feedback context if regenerating
+    if (feedback) {
+      prompt += `\nIMPORTANT FEEDBACK FROM PREVIOUS WORKOUT:\n`
+      prompt += `Previous Rating: ${feedback.rating}/5 (${feedback.rating === 1 ? 'Too Easy' : feedback.rating === 2 ? 'Easy' : feedback.rating === 3 ? 'Just Right' : feedback.rating === 4 ? 'Challenging' : 'Too Hard'})\n`
+      prompt += `Category: ${feedback.category}\n`
+      prompt += `Specific Feedback: "${feedback.feedback}"\n`
+      prompt += `\nPLEASE ADJUST THE WORKOUT BASED ON THIS FEEDBACK:\n`
+      
+      // Add specific instructions based on rating
+      if (feedback.rating <= 2) {
+        prompt += `- The previous workout was too easy. Increase difficulty by:\n`
+        prompt += `  * Adding more challenging exercises\n`
+        prompt += `  * Increasing sets/reps\n`
+        prompt += `  * Reducing rest times\n`
+        prompt += `  * Adding progressive overload\n`
+      } else if (feedback.rating >= 4) {
+        prompt += `- The previous workout was too hard. Reduce difficulty by:\n`
+        prompt += `  * Using easier exercise variations\n`
+        prompt += `  * Reducing sets/reps\n`
+        prompt += `  * Increasing rest times\n`
+        prompt += `  * Adding more warm-up\n`
+      }
+      
+      prompt += `\nIncorporate the specific feedback: "${feedback.feedback}"\n\n`
       prompt += `---\n\n`
     }
     
