@@ -274,7 +274,7 @@ CRITICAL:
       // Try to extract JSON from the response if it contains extra text
       let jsonContent = response.content || '{}'
       
-      console.log('Raw AI response:', jsonContent)
+      console.log('Raw AI response (first 500 chars):', jsonContent.substring(0, 500))
       
       // Remove any markdown code blocks if present
       jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '')
@@ -286,7 +286,35 @@ CRITICAL:
       }
       
       const parsed = JSON.parse(jsonContent)
-      console.log('Parsed workout plan:', parsed)
+      console.log('Parsed workout first block:', JSON.stringify(parsed.blocks?.[0], null, 2))
+      
+      // Validate and fix exercise structure
+      if (parsed.blocks && Array.isArray(parsed.blocks)) {
+        parsed.blocks = parsed.blocks.map(block => {
+          if (block.exercises && Array.isArray(block.exercises)) {
+            // Check if exercises are strings and convert to objects
+            block.exercises = block.exercises.map(exercise => {
+              if (typeof exercise === 'string') {
+                console.warn('Exercise is string, converting:', exercise)
+                // Try to parse string format like "Push-ups 3x10"
+                const match = exercise.match(/^(.+?)\s+(\d+)x(\d+)$/) || 
+                             exercise.match(/^(.+?)\s+(\d+)\s*(?:sets?|reps?)$/) ||
+                             exercise.match(/^(.+?)\s+(\d+)sec$/)
+                if (match) {
+                  return {
+                    name: match[1].trim(),
+                    sets: parseInt(match[2]) || 3,
+                    reps: match[3] || '10-15'
+                  }
+                }
+                return { name: exercise, sets: 3, reps: '10-15' }
+              }
+              return exercise
+            })
+          }
+          return block
+        })
+      }
       
       workoutPlan = {
         ...parsed,
