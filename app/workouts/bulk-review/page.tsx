@@ -15,7 +15,10 @@ import {
   Download,
   Printer,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  RefreshCw,
+  MessageSquare,
+  Save
 } from 'lucide-react'
 
 interface Exercise {
@@ -54,6 +57,10 @@ function BulkReviewContent() {
   const [expandedWorkouts, setExpandedWorkouts] = useState<Set<string>>(new Set())
   const [groupNotes, setGroupNotes] = useState<string>('')
   const [sharedRehab, setSharedRehab] = useState<Exercise[]>([])
+  const [editingWorkout, setEditingWorkout] = useState<string | null>(null)
+  const [feedbackModal, setFeedbackModal] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<string>('')
+  const [regenerating, setRegenerating] = useState<string | null>(null)
 
   useEffect(() => {
     const workoutIds = searchParams.get('ids')?.split(',') || []
@@ -103,6 +110,8 @@ function BulkReviewContent() {
             isGroupWorkout: r.workout.source === 'group-ai' || r.workout.plan?.group_title ? true : false
           }
           console.log('Processed workout:', workout.id, workout.client_name)
+          console.log('Blocks:', workout.blocks)
+          console.log('First block exercises:', workout.blocks[0]?.exercises)
           return workout
         })
       
@@ -110,9 +119,14 @@ function BulkReviewContent() {
       setWorkouts(loadedWorkouts)
       
       // Extract shared rehab exercises if it's a group workout
-      if (loadedWorkouts.length > 0 && loadedWorkouts[0].plan?.shared_rehab_exercises) {
-        setSharedRehab(loadedWorkouts[0].plan.shared_rehab_exercises)
-        console.log('Found shared rehab exercises:', loadedWorkouts[0].plan.shared_rehab_exercises)
+      // Check both possible field names for shared exercises
+      if (loadedWorkouts.length > 0) {
+        const sharedExercises = loadedWorkouts[0].plan?.shared_rehab_exercises || 
+                                loadedWorkouts[0].plan?.shared_rehab || []
+        if (sharedExercises.length > 0) {
+          setSharedRehab(sharedExercises)
+          console.log('Found shared rehab exercises:', sharedExercises)
+        }
       }
       
       // Extract group notes if available
@@ -148,6 +162,80 @@ function BulkReviewContent() {
   async function exportAllAsPDF() {
     // TODO: Implement PDF export for all workouts
     alert('PDF export coming soon!')
+  }
+
+  async function regenerateWorkout(workoutId: string, feedbackText?: string) {
+    setRegenerating(workoutId)
+    const workout = workouts.find(w => w.id === workoutId)
+    
+    if (!workout) {
+      alert('Workout not found')
+      setRegenerating(null)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/workouts/generate-simple', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: workout.title,
+          clientId: workout.client_id,
+          focus: workout.plan?.focus || 'full body',
+          duration: workout.plan?.total_time_minutes || 60,
+          intensity: workout.plan?.intensity_target || 'moderate',
+          equipment: workout.equipment_assigned || [],
+          feedback: feedbackText ? {
+            rating: 3,
+            category: 'needs_adjustment',
+            feedback: feedbackText
+          } : null
+        })
+      })
+
+      const data = await response.json()
+      
+      if (response.ok && data.workout) {
+        // Update the workout in the list
+        setWorkouts(prev => prev.map(w => 
+          w.id === workoutId ? {
+            ...w,
+            plan: data.workout.plan,
+            blocks: data.workout.plan?.blocks || []
+          } : w
+        ))
+        alert('Workout regenerated successfully!')
+      } else {
+        alert('Failed to regenerate workout')
+      }
+    } catch (error) {
+      console.error('Error regenerating workout:', error)
+      alert('Error regenerating workout')
+    } finally {
+      setRegenerating(null)
+      setFeedbackModal(null)
+      setFeedback('')
+    }
+  }
+
+  async function saveWorkoutEdit(workoutId: string, updatedPlan: any) {
+    try {
+      const response = await fetch(`/api/workouts/${workoutId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: updatedPlan })
+      })
+
+      if (response.ok) {
+        setEditingWorkout(null)
+        alert('Workout saved successfully!')
+      } else {
+        alert('Failed to save workout')
+      }
+    } catch (error) {
+      console.error('Error saving workout:', error)
+      alert('Error saving workout')
+    }
   }
 
   const isGroupSession = workouts.some(w => w.isGroupWorkout)
@@ -368,14 +456,36 @@ function BulkReviewContent() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFeedbackModal(workout.id)
+                      }}
+                      className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-500 flex items-center gap-1 text-sm"
+                      disabled={regenerating === workout.id}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Feedback
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        regenerateWorkout(workout.id)
+                      }}
+                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-500 flex items-center gap-1 text-sm"
+                      disabled={regenerating === workout.id}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${regenerating === workout.id ? 'animate-spin' : ''}`} />
+                      Regenerate
+                    </button>
                     <Link
                       href={`/workouts/${workout.id}`}
-                      className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-500 flex items-center gap-1"
+                      className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-500 flex items-center gap-1 text-sm"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Edit2 className="w-4 h-4" />
-                      Edit
+                      View
                     </Link>
                     {expandedWorkouts.has(workout.id) ? (
                       <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -389,11 +499,13 @@ function BulkReviewContent() {
               {/* Workout Content */}
               {expandedWorkouts.has(workout.id) && (
                 <div className="px-6 pb-6 border-t border-gray-700">
-                  {workout.blocks && workout.blocks.map((block, blockIndex) => (
-                    <div key={blockIndex} className="mt-4">
-                      <h4 className="font-medium text-gray-300 mb-3">{block.title}</h4>
-                      <div className="space-y-2">
-                        {block.exercises.map((exercise, exIndex) => (
+                  {workout.blocks && workout.blocks.length > 0 ? (
+                    workout.blocks.map((block, blockIndex) => (
+                      <div key={blockIndex} className="mt-4">
+                        <h4 className="font-medium text-gray-300 mb-3">{block.title}</h4>
+                        <div className="space-y-2">
+                          {block.exercises && block.exercises.length > 0 ? (
+                            block.exercises.map((exercise, exIndex) => (
                           <div 
                             key={exIndex}
                             className="flex justify-between items-center p-3 bg-gray-700 rounded"
@@ -409,10 +521,20 @@ function BulkReviewContent() {
                               <p>Rest: {exercise.rest_seconds}s</p>
                             </div>
                           </div>
-                        ))}
+                        ))
+                          ) : (
+                            <p className="text-gray-500 text-sm italic">No exercises in this block</p>
+                          )}
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center">
+                      <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                      <p className="text-gray-400">No workout blocks found</p>
+                      <p className="text-sm text-gray-500 mt-1">Try regenerating this workout</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
@@ -438,6 +560,48 @@ function BulkReviewContent() {
           </button>
         </div>
       </main>
+
+      {/* Feedback Modal */}
+      {feedbackModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">
+              Provide Feedback for Regeneration
+            </h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Describe what changes you'd like to see in the workout
+            </p>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="e.g., Make it harder, add more core exercises, reduce the intensity..."
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 h-32"
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  if (feedback.trim()) {
+                    regenerateWorkout(feedbackModal, feedback)
+                  }
+                }}
+                disabled={!feedback.trim()}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 disabled:opacity-50"
+              >
+                Regenerate with Feedback
+              </button>
+              <button
+                onClick={() => {
+                  setFeedbackModal(null)
+                  setFeedback('')
+                }}
+                className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
