@@ -50,6 +50,8 @@ export default function BulkBuilderPage() {
     equipment: '',
     contextId: ''
   })
+  const [groupMode, setGroupMode] = useState(false)
+  const [gymEquipment, setGymEquipment] = useState('')
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [results, setResults] = useState<any[]>([])
@@ -174,13 +176,121 @@ export default function BulkBuilderPage() {
       return
     }
 
+    if (groupMode && workoutConfigs.length > 5) {
+      setError('Group mode supports maximum 5 clients')
+      return
+    }
+
     setGenerating(true)
     setError('')
     setResults([])
-    setProgress({ current: 0, total: workoutConfigs.length })
+    setProgress({ current: 0, total: groupMode ? 1 : workoutConfigs.length })
 
     const generatedWorkouts = []
 
+    if (groupMode) {
+      // GROUP WORKOUT GENERATION
+      try {
+        setProgress({ current: 1, total: 1 })
+        
+        const clientsData = workoutConfigs.map(config => ({
+          id: config.clientId,
+          full_name: config.client?.full_name || 'Unknown',
+          goals: config.client?.goals,
+          injuries: config.client?.injuries,
+          equipment: config.equipment ? config.equipment.split(',').map(e => e.trim()) : []
+        }))
+
+        const response = await fetch('/api/workouts/generate-group', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clients: clientsData,
+            duration: defaultSettings.duration,
+            intensity: defaultSettings.intensity,
+            focus: defaultSettings.focus,
+            gymEquipment: gymEquipment ? gymEquipment.split(',').map(e => e.trim()) : [],
+            context: contexts.find(c => c.id === defaultSettings.contextId) || null,
+            title: `Group Training - ${new Date().toLocaleDateString()}`
+          }),
+        })
+
+        const data = await response.json()
+        
+        if (response.ok && data.groupWorkout) {
+          // Save individual workouts for each client
+          for (const individualWorkout of data.groupWorkout.individual_workouts) {
+            try {
+              const saveResponse = await fetch('/api/workouts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: `group-workout-${Date.now()}-${individualWorkout.client_id}`,
+                  title: `Group Training - ${individualWorkout.client_name}`,
+                  plan: {
+                    blocks: individualWorkout.blocks,
+                    training_goals: individualWorkout.training_goals,
+                    constraints: individualWorkout.constraints,
+                    intensity_target: defaultSettings.intensity,
+                    total_time_minutes: defaultSettings.duration,
+                    equipment_assigned: individualWorkout.equipment_assigned,
+                    shared_rehab: data.groupWorkout.shared_rehab_exercises,
+                    group_notes: data.groupWorkout.group_notes
+                  },
+                  client_id: individualWorkout.client_id,
+                  source: 'group-ai',
+                  version: 1
+                })
+              })
+              
+              const saveResult = await saveResponse.json()
+              
+              if (saveResponse.ok) {
+                generatedWorkouts.push({
+                  success: true,
+                  client: individualWorkout.client_name,
+                  workoutId: saveResult.id,
+                  title: `Group Training - ${individualWorkout.client_name}`,
+                  isGroupWorkout: true
+                })
+              } else {
+                generatedWorkouts.push({
+                  success: false,
+                  client: individualWorkout.client_name,
+                  error: 'Failed to save group workout'
+                })
+              }
+            } catch (saveErr) {
+              generatedWorkouts.push({
+                success: false,
+                client: individualWorkout.client_name,
+                error: 'Failed to save workout to database'
+              })
+            }
+          }
+        } else {
+          // If group generation fails, fall back to individual generation
+          console.warn('Group workout generation failed, falling back to individual workouts')
+          return await generateIndividualWorkouts()
+        }
+      } catch (err) {
+        console.error('Group workout generation error:', err)
+        // Fallback to individual generation
+        return await generateIndividualWorkouts()
+      }
+    } else {
+      // INDIVIDUAL WORKOUT GENERATION
+      await generateIndividualWorkouts()
+    }
+
+    setResults(generatedWorkouts)
+    setShowResults(true)
+    setGenerating(false)
+  }
+
+  async function generateIndividualWorkouts() {
+    const generatedWorkouts = []
+    
     for (let i = 0; i < workoutConfigs.length; i++) {
       const config = workoutConfigs[i]
       setProgress({ current: i + 1, total: workoutConfigs.length })
@@ -256,10 +366,8 @@ export default function BulkBuilderPage() {
         await new Promise(resolve => setTimeout(resolve, 500))
       }
     }
-
-    setResults(generatedWorkouts)
-    setShowResults(true)
-    setGenerating(false)
+    
+    return generatedWorkouts
   }
 
   const availableClients = clients.filter(
@@ -366,6 +474,65 @@ export default function BulkBuilderPage() {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Group Mode Settings */}
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border-2 border-purple-600">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-100 flex items-center">
+              <Users className="h-5 w-5 mr-2 text-purple-500" />
+              Group Training Mode
+              <span className="ml-2 text-xs bg-purple-600 text-white px-2 py-1 rounded-full">NEW</span>
+            </h2>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={groupMode}
+                onChange={(e) => setGroupMode(e.target.checked)}
+                className="sr-only"
+              />
+              <div className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                groupMode ? 'bg-purple-600' : 'bg-gray-600'
+              }`}>
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                  groupMode ? 'translate-x-6' : 'translate-x-0'
+                }`} />
+              </div>
+              <span className="ml-3 text-gray-300">{groupMode ? 'Enabled' : 'Disabled'}</span>
+            </label>
+          </div>
+          
+          {groupMode && (
+            <div className="space-y-4 border-t border-gray-700 pt-4">
+              <div className="bg-purple-900/30 border border-purple-600 rounded-lg p-4">
+                <h3 className="font-medium text-purple-300 mb-2">Group Training Features:</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>• Up to 5 clients train together simultaneously</li>
+                  <li>• Equipment overlap prevention - no equipment conflicts</li>
+                  <li>• 2 shared rehab exercises (1 upper, 1 lower) for the whole group</li>
+                  <li>• Structured: 2 compound → 2 compound → isolation exercises</li>
+                  <li>• Individual modifications for injuries/limitations</li>
+                </ul>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Available Gym Equipment
+                  <span className="text-purple-400 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={gymEquipment}
+                  onChange={(e) => setGymEquipment(e.target.value)}
+                  placeholder="e.g., dumbbells, barbell, resistance bands, pull-up bar, squat rack"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  List all equipment available in the gym. This prevents equipment conflicts during group training.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Add Clients */}
@@ -619,8 +786,17 @@ export default function BulkBuilderPage() {
                 </>
               ) : (
                 <>
-                  <Dumbbell className="inline h-5 w-5 mr-2" />
-                  Generate {workoutConfigs.length} Workouts
+                  {groupMode ? (
+                    <>
+                      <Users className="inline h-5 w-5 mr-2" />
+                      Generate Group Training for {workoutConfigs.length} Clients
+                    </>
+                  ) : (
+                    <>
+                      <Dumbbell className="inline h-5 w-5 mr-2" />
+                      Generate {workoutConfigs.length} Individual Workouts
+                    </>
+                  )}
                 </>
               )}
             </button>
@@ -641,7 +817,25 @@ export default function BulkBuilderPage() {
         {/* Results */}
         {showResults && results.length > 0 && (
           <div className="mt-6 bg-gray-800 rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-100 mb-4">Generation Results</h2>
+            <h2 className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
+              {groupMode ? (
+                <>
+                  <Users className="h-5 w-5 mr-2 text-purple-500" />
+                  Group Training Results
+                </>
+              ) : (
+                <>
+                  Generation Results
+                </>
+              )}
+            </h2>
+            {groupMode && (
+              <div className="mb-4 p-3 bg-purple-900/30 border border-purple-600 rounded-lg">
+                <p className="text-sm text-purple-300">
+                  ✨ Group training session created with equipment conflict prevention and shared rehab exercises
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               {results.map((result, index) => (
                 <div 
@@ -659,6 +853,11 @@ export default function BulkBuilderPage() {
                     <span className="font-medium text-gray-100">{result.client}</span>
                     {result.success && (
                       <span className="ml-2 text-sm text-gray-400">- {result.title}</span>
+                    )}
+                    {result.success && result.isGroupWorkout && (
+                      <span className="ml-2 text-xs bg-purple-600 text-white px-2 py-1 rounded-full">
+                        GROUP
+                      </span>
                     )}
                   </div>
                   {result.success ? (

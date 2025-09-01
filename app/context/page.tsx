@@ -19,7 +19,7 @@ interface SOP {
   id: string
   title: string
   content: string
-  category: 'training' | 'nutrition' | 'assessment' | 'general'
+  category: 'training' | 'nutrition' | 'assessment' | 'general' | 'equipment'
   createdAt: string
 }
 
@@ -108,7 +108,8 @@ export default function ContextPage() {
     training: 'text-blue-400 bg-blue-900/30 border-blue-800',
     nutrition: 'text-green-400 bg-green-900/30 border-green-800',
     assessment: 'text-purple-400 bg-purple-900/30 border-purple-800',
-    general: 'text-gray-400 bg-gray-700 border-gray-600'
+    general: 'text-gray-400 bg-gray-700 border-gray-600',
+    equipment: 'text-orange-400 bg-orange-900/30 border-orange-800'
   }
 
   return (
@@ -198,6 +199,7 @@ export default function ContextPage() {
                 <option value="training">Training Protocols</option>
                 <option value="nutrition">Nutrition Guidelines</option>
                 <option value="assessment">Assessment Methods</option>
+                <option value="equipment">Equipment & Facility</option>
               </select>
               <div id="category-hint" className="sr-only">Choose the most appropriate category for this SOP</div>
             </div>
