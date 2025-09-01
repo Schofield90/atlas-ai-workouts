@@ -367,18 +367,18 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
               <div className="space-y-3">
                 <div>
                   <div className="text-sm text-gray-500">Name</div>
-                  <div className="font-medium">{workout.clients.full_name}</div>
+                  <div className="font-medium text-gray-100">{workout.clients.full_name}</div>
                 </div>
                 {workout.clients.email && (
                   <div>
                     <div className="text-sm text-gray-500">Email</div>
-                    <div className="font-medium text-sm">{workout.clients.email}</div>
+                    <div className="font-medium text-sm text-gray-300">{workout.clients.email}</div>
                   </div>
                 )}
                 {workout.clients.goals && (
                   <div>
                     <div className="text-sm text-gray-500">Goals</div>
-                    <div className="text-sm">{workout.clients.goals}</div>
+                    <div className="text-sm text-gray-300">{workout.clients.goals}</div>
                   </div>
                 )}
                 {workout.clients.injuries && (
@@ -408,17 +408,17 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
               <div className="space-y-3 text-sm">
                 <div>
                   <div className="text-gray-500">Version</div>
-                  <div className="font-medium">{workout.version}</div>
+                  <div className="font-medium text-gray-100">{workout.version}</div>
                 </div>
                 <div>
                   <div className="text-gray-500">Created</div>
-                  <div className="font-medium">
+                  <div className="font-medium text-gray-100">
                     {new Date(workout.created_at).toLocaleDateString()}
                   </div>
                 </div>
                 <div>
                   <div className="text-gray-500">Program Phase</div>
-                  <div className="font-medium">
+                  <div className="font-medium text-gray-100">
                     {workout.plan.program_phase || 'General Training'}
                   </div>
                 </div>

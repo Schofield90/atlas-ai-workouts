@@ -93,12 +93,39 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { title, clientId, duration = 60, intensity = 'moderate', focus = '', equipment = [], context, provider } = body
 
-    // Get client from request body (passed from frontend)
-    const client = body.client || {
+    // Get client data directly from database to ensure accuracy
+    let client = {
       full_name: 'Guest User',
       goals: 'General fitness',
       injuries: '',
       equipment: equipment
+    }
+
+    if (clientId && clientId !== 'guest') {
+      try {
+        const { createClient } = await import('@/lib/db/client-fixed')
+        const supabase = createClient()
+        
+        const { data: clientData, error } = await supabase
+          .from('workout_clients')
+          .select('*')
+          .eq('id', clientId)
+          .single()
+        
+        if (clientData && !error) {
+          client = {
+            full_name: clientData.full_name,
+            goals: clientData.goals || 'General fitness',
+            injuries: clientData.injuries || '',
+            equipment: clientData.equipment || equipment
+          }
+          console.log('Using client from database:', client.full_name, 'Injuries:', client.injuries)
+        } else {
+          console.warn('Client not found in database, using fallback:', clientId, error)
+        }
+      } catch (dbError) {
+        console.error('Database error fetching client:', dbError)
+      }
     }
 
     // Build prompt with context
