@@ -63,6 +63,16 @@ export default function BulkBuilderPage() {
     loadContexts()
   }, [])
 
+  // Helper to check if selected context contains equipment information
+  const hasEquipmentContext = () => {
+    const selectedContext = contexts.find(c => c.id === defaultSettings.contextId)
+    if (!selectedContext || !selectedContext.textSections) return false
+    
+    return selectedContext.textSections.some((section: any) => 
+      section.category === 'equipment'
+    )
+  }
+
   async function loadClients() {
     try {
       // Load from Supabase database
@@ -518,17 +528,26 @@ export default function BulkBuilderPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Available Gym Equipment
-                  <span className="text-purple-400 ml-1">*</span>
+                  {!hasEquipmentContext() && <span className="text-purple-400 ml-1">*</span>}
+                  {hasEquipmentContext() && (
+                    <span className="text-green-400 ml-2 text-xs">✓ Equipment from selected SOPs</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={gymEquipment}
                   onChange={(e) => setGymEquipment(e.target.value)}
-                  placeholder="e.g., dumbbells, barbell, resistance bands, pull-up bar, squat rack"
+                  placeholder={hasEquipmentContext() 
+                    ? "Optional: Add additional equipment not listed in SOPs"
+                    : "e.g., dumbbells, barbell, resistance bands, pull-up bar, squat rack"
+                  }
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  List all equipment available in the gym. This prevents equipment conflicts during group training.
+                  {hasEquipmentContext() 
+                    ? "Equipment will be automatically detected from your selected SOPs. You can add additional equipment here if needed."
+                    : "List all equipment available in the gym. This prevents equipment conflicts during group training. Or add equipment information to your SOPs context."
+                  }
                 </p>
               </div>
             </div>

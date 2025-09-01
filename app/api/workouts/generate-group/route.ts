@@ -27,7 +27,41 @@ export async function POST(request: NextRequest) {
 
     console.log('=== GROUP WORKOUT GENERATION ===')
     console.log('Clients:', clients.length)
-    console.log('Gym equipment:', gymEquipment)
+    console.log('Gym equipment input:', gymEquipment)
+
+    // Extract equipment from context if available
+    let contextEquipment: string[] = []
+    if (context && context.textSections && context.textSections.length > 0) {
+      const equipmentSections = context.textSections.filter((section: any) => 
+        section.category === 'equipment'
+      )
+      
+      equipmentSections.forEach((section: any) => {
+        // Extract equipment from equipment SOPs
+        const equipmentText = section.content.toLowerCase()
+        const commonEquipment = [
+          'dumbbells', 'dumbbell', 'barbell', 'barbells', 'kettlebell', 'kettlebells',
+          'resistance bands', 'bands', 'pull-up bar', 'chin-up bar', 'pull up bar',
+          'squat rack', 'power rack', 'bench', 'flat bench', 'incline bench',
+          'cable machine', 'cables', 'lat pulldown', 'rowing machine', 'rower',
+          'treadmill', 'bike', 'stationary bike', 'elliptical', 'smith machine',
+          'leg press', 'leg curl', 'leg extension', 'calf raise', 'dip bars',
+          'battle ropes', 'medicine ball', 'stability ball', 'bosu ball',
+          'foam roller', 'yoga mats', 'mats', 'plates', 'weight plates'
+        ]
+        
+        commonEquipment.forEach(equipment => {
+          if (equipmentText.includes(equipment) && !contextEquipment.includes(equipment)) {
+            contextEquipment.push(equipment)
+          }
+        })
+      })
+    }
+
+    // Combine manual gym equipment with context equipment
+    const allEquipment = [...new Set([...gymEquipment, ...contextEquipment])]
+    console.log('Context equipment found:', contextEquipment)
+    console.log('Combined equipment list:', allEquipment)
 
     // Build comprehensive prompt for group workout
     let prompt = ''
@@ -44,7 +78,7 @@ export async function POST(request: NextRequest) {
             'chat': 'Chat Export', 
             'guide': 'Training Guide',
             'notes': 'Notes',
-            'equipment': 'Equipment List'
+            'equipment': 'Equipment & Facility Information'
           }
           const categoryLabel = categoryLabels[section.category] || 'Context'
           
@@ -70,7 +104,8 @@ WORKOUT SPECIFICATIONS:
 - Duration: ${duration} minutes
 - Intensity: ${intensity}
 - Focus: ${focus}
-- Available Gym Equipment: ${gymEquipment.join(', ')}
+- Available Gym Equipment: ${allEquipment.length > 0 ? allEquipment.join(', ') : 'bodyweight only'}
+${contextEquipment.length > 0 ? `- Equipment from SOPs: ${contextEquipment.join(', ')}` : ''}
 
 CRITICAL GROUP WORKOUT REQUIREMENTS:
 
