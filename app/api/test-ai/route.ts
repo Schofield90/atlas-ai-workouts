@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
         provider: (aiClient as any).provider || 'unknown',
         responseLength: response.content?.length || 0,
         response: response.content?.substring(0, 500),
-        parsed: null
+        parsed: null as any
       }
       
       try {
         testResult.parsed = JSON.parse(response.content || '[]')
       } catch (e) {
-        testResult.parsed = 'Failed to parse JSON'
+        testResult.parsed = { error: 'Failed to parse JSON' }
       }
     } catch (e: any) {
       error = {
