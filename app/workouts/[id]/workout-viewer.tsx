@@ -294,17 +294,27 @@ export default function WorkoutViewer({ workout }: WorkoutViewerProps) {
                               </h4>
                               
                               <div className="mt-1 flex flex-wrap gap-3 text-sm text-gray-300">
+                                {/* Handle both old and new exercise formats */}
                                 {exercise.sets && (
                                   <span>{exercise.sets} sets</span>
                                 )}
                                 {exercise.reps && (
-                                  <span>× {exercise.reps} reps</span>
+                                  <span>× {typeof exercise.reps === 'number' ? `${exercise.reps} sets` : exercise.reps}</span>
+                                )}
+                                {exercise.duration && (
+                                  <span>
+                                    <Clock className="h-3 w-3 inline mr-1" />
+                                    {exercise.duration}
+                                  </span>
                                 )}
                                 {exercise.time_seconds && (
                                   <span>
                                     <Clock className="h-3 w-3 inline mr-1" />
                                     {exercise.time_seconds}s
                                   </span>
+                                )}
+                                {exercise.rest && (
+                                  <span>Rest: {exercise.rest}</span>
                                 )}
                                 {exercise.rest_seconds && (
                                   <span>Rest: {exercise.rest_seconds}s</span>

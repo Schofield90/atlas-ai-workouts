@@ -113,15 +113,26 @@ export async function POST(request: NextRequest) {
           .single()
         
         if (clientData && !error) {
+          // Clean up injuries data - remove if it's "No injuries reported"
+          let cleanInjuries = clientData.injuries || ''
+          if (cleanInjuries === 'No injuries reported' || cleanInjuries === 'none') {
+            cleanInjuries = ''
+          }
+          
           client = {
             full_name: clientData.full_name,
             goals: clientData.goals || 'General fitness',
-            injuries: clientData.injuries || '',
+            injuries: cleanInjuries,
             equipment: clientData.equipment || equipment
           }
-          console.log('Using client from database:', client.full_name, 'Injuries:', client.injuries)
+          console.log('✅ Using client from database:', {
+            name: client.full_name,
+            id: clientId,
+            injuries: client.injuries || 'NONE',
+            goals: client.goals
+          })
         } else {
-          console.warn('Client not found in database, using fallback:', clientId, error)
+          console.warn('⚠️ Client not found in database, using Guest User:', clientId, error)
         }
       } catch (dbError) {
         console.error('Database error fetching client:', dbError)
@@ -202,17 +213,37 @@ CRITICAL REQUIREMENTS:
 
 4. The "constraints" field MUST list actual client limitations from their profile, NOT generic constraints.
 
-Generate a complete workout plan as JSON with this exact structure:
+Generate a complete workout plan as JSON with this EXACT structure:
 {
   "blocks": [
-    { "title": "Warm-up", "exercises": [...] },
-    { "title": "Main Workout", "exercises": [...exercises focusing on ${focus || 'full body'}...] },
-    { "title": "Cool-down", "exercises": [...] }
+    { 
+      "title": "Warm-up", 
+      "exercises": [
+        { "name": "Exercise Name", "sets": 2, "reps": "10", "rest_seconds": 30 }
+      ] 
+    },
+    { 
+      "title": "Main Workout", 
+      "exercises": [
+        { "name": "Exercise Name", "sets": 3, "reps": "12-15", "rest_seconds": 60 }
+      ] 
+    },
+    { 
+      "title": "Cool-down", 
+      "exercises": [
+        { "name": "Stretch Name", "sets": 1, "time_seconds": 30 }
+      ] 
+    }
   ],
   "training_goals": [${client.goals ? `"${client.goals}"` : '"General fitness"'}],
-  "constraints": [${client.injuries && client.injuries !== 'none' && client.injuries !== 'No injuries reported' ? `"${client.injuries}"` : ''}],
+  "constraints": [${client.injuries && client.injuries !== '' && client.injuries !== 'none' && client.injuries !== 'No injuries reported' ? `"${client.injuries}"` : ''}],
   "intensity_target": "${intensity}"
-}`
+}
+
+CRITICAL: 
+- Use "sets", "reps", "rest_seconds" or "time_seconds" fields for exercises
+- constraints should be EMPTY [] if client has no injuries
+- Do NOT add random medical conditions to constraints`
 
     // Generate workout with AI
     console.log('=== AI WORKOUT GENERATION ===')
