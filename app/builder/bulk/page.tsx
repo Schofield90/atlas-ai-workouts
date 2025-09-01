@@ -219,20 +219,20 @@ export default function BulkBuilderPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-900">
+      <nav className="bg-gray-800 shadow-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <a href="/dashboard" className="text-gray-500 hover:text-gray-700 mr-4">
+              <a href="/dashboard" className="text-gray-400 hover:text-gray-100 mr-4">
                 ← Back
               </a>
-              <h1 className="text-xl font-semibold">Bulk Workout Builder</h1>
+              <h1 className="text-xl font-semibold text-gray-100">Bulk Workout Builder</h1>
             </div>
             <div className="flex items-center space-x-2">
               <a 
                 href="/builder"
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-1 text-sm border border-gray-600 text-gray-300 rounded hover:bg-gray-700"
               >
                 Single Workout
               </a>
@@ -243,14 +243,14 @@ export default function BulkBuilderPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Default Settings */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center">
-            <Dumbbell className="h-5 w-5 mr-2 text-blue-600" />
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-100 mb-4 flex items-center">
+            <Dumbbell className="h-5 w-5 mr-2 text-blue-500" />
             Default Settings (Applied to new clients)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Duration (min)
               </label>
               <input
@@ -260,13 +260,13 @@ export default function BulkBuilderPage() {
                   ...defaultSettings,
                   duration: parseInt(e.target.value) || 60
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 min="15"
                 max="120"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Intensity
               </label>
               <select
@@ -275,7 +275,7 @@ export default function BulkBuilderPage() {
                   ...defaultSettings,
                   intensity: e.target.value
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="light">Light</option>
                 <option value="moderate">Moderate</option>
@@ -283,7 +283,7 @@ export default function BulkBuilderPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Focus Area
               </label>
               <input
@@ -294,11 +294,11 @@ export default function BulkBuilderPage() {
                   focus: e.target.value
                 })}
                 placeholder="e.g., upper body, cardio"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Context
               </label>
               <select
@@ -307,7 +307,7 @@ export default function BulkBuilderPage() {
                   ...defaultSettings,
                   contextId: e.target.value
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">No context</option>
                 {contexts.map(context => (
@@ -321,16 +321,16 @@ export default function BulkBuilderPage() {
         </div>
 
         {/* Add Clients */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center">
-              <Users className="h-5 w-5 mr-2 text-green-600" />
+            <h2 className="text-lg font-semibold text-gray-100 flex items-center">
+              <Users className="h-5 w-5 mr-2 text-green-500" />
               Select Clients ({workoutConfigs.length} selected)
             </h2>
             {workoutConfigs.length > 0 && (
               <button
                 onClick={() => setWorkoutConfigs([])}
-                className="text-sm text-red-600 hover:text-red-700"
+                className="text-sm text-red-400 hover:text-red-300"
               >
                 Clear All
               </button>
@@ -344,13 +344,13 @@ export default function BulkBuilderPage() {
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
               placeholder="Search clients by name, email, or goals..."
-              className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 pl-10 bg-gray-700 border border-gray-600 text-gray-100 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             {clientSearch && (
               <button
                 onClick={() => setClientSearch('')}
-                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-200"
               >
                 ×
               </button>
@@ -373,18 +373,18 @@ export default function BulkBuilderPage() {
                   <button
                     key={client.id}
                     onClick={() => addClient(client.id)}
-                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left transition-colors"
+                    className="p-3 border border-gray-600 rounded-lg hover:bg-gray-700 text-left transition-colors"
                   >
-                    <div className="font-medium">{client.full_name}</div>
+                    <div className="font-medium text-gray-100">{client.full_name}</div>
                     {client.goals && (
-                      <div className="text-xs text-gray-500 truncate">{client.goals}</div>
+                      <div className="text-xs text-gray-400 truncate">{client.goals}</div>
                     )}
-                    <Plus className="h-4 w-4 text-blue-600 mt-2" />
+                    <Plus className="h-4 w-4 text-blue-500 mt-2" />
                   </button>
                 ))}
             </div>
           ) : (
-            <p className="text-gray-500">
+            <p className="text-gray-400">
               {clientSearch 
                 ? `No clients found matching "${clientSearch}"`
                 : clients.length === 0 
@@ -396,31 +396,31 @@ export default function BulkBuilderPage() {
 
         {/* Workout Configurations */}
         {workoutConfigs.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">
+          <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-100 mb-4">
               Workout Configurations
             </h2>
             <div className="space-y-4">
               {workoutConfigs.map((config, index) => (
-                <div key={index} className="border rounded-lg p-4">
+                <div key={index} className="border border-gray-600 rounded-lg p-4 bg-gray-700">
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-medium text-lg">
+                    <h3 className="font-medium text-lg text-gray-100">
                       {config.client?.full_name}
                     </h3>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => duplicateConfig(index)}
                         title="Duplicate"
-                        className="p-1 hover:bg-gray-100 rounded"
+                        className="p-1 hover:bg-gray-600 rounded"
                       >
-                        <Copy className="h-4 w-4 text-gray-500" />
+                        <Copy className="h-4 w-4 text-gray-400" />
                       </button>
                       <button
                         onClick={() => removeConfig(index)}
                         title="Remove"
-                        className="p-1 hover:bg-red-50 rounded"
+                        className="p-1 hover:bg-red-900/30 rounded"
                       >
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <Trash2 className="h-4 w-4 text-red-400" />
                       </button>
                     </div>
                   </div>
@@ -428,7 +428,7 @@ export default function BulkBuilderPage() {
                   <div className="grid grid-cols-1 gap-3">
                     {/* Workout Title - Full Width and Emphasized */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-300 mb-1">
                         Workout Title * (e.g., "Biceps and Chest" or "Shoulders and Quads")
                       </label>
                       <input
@@ -436,14 +436,14 @@ export default function BulkBuilderPage() {
                         value={config.title}
                         onChange={(e) => updateConfig(index, { title: e.target.value })}
                         placeholder="Enter workout focus areas (e.g., Back and Biceps, Legs and Core)"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm bg-gray-600 border border-gray-500 text-gray-100 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-400 mb-1">
                         Duration (min)
                       </label>
                       <input
@@ -452,19 +452,19 @@ export default function BulkBuilderPage() {
                         onChange={(e) => updateConfig(index, { 
                           duration: parseInt(e.target.value) || 60 
                         })}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        className="w-full px-2 py-1 text-sm bg-gray-600 border border-gray-500 text-gray-100 rounded"
                         min="15"
                         max="120"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-400 mb-1">
                         Intensity
                       </label>
                       <select
                         value={config.intensity}
                         onChange={(e) => updateConfig(index, { intensity: e.target.value })}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        className="w-full px-2 py-1 text-sm bg-gray-600 border border-gray-500 text-gray-100 rounded"
                       >
                         <option value="light">Light</option>
                         <option value="moderate">Moderate</option>
@@ -472,7 +472,7 @@ export default function BulkBuilderPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-400 mb-1">
                         Focus Area
                       </label>
                       <input
@@ -480,11 +480,11 @@ export default function BulkBuilderPage() {
                         value={config.focus}
                         onChange={(e) => updateConfig(index, { focus: e.target.value })}
                         placeholder="e.g., upper body"
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        className="w-full px-2 py-1 text-sm bg-gray-600 border border-gray-500 text-gray-100 rounded placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-400 mb-1">
                         Equipment
                       </label>
                       <input
@@ -492,17 +492,17 @@ export default function BulkBuilderPage() {
                         value={config.equipment}
                         onChange={(e) => updateConfig(index, { equipment: e.target.value })}
                         placeholder="e.g., dumbbells, barbell"
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        className="w-full px-2 py-1 text-sm bg-gray-600 border border-gray-500 text-gray-100 rounded placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-400 mb-1">
                         Context
                       </label>
                       <select
                         value={config.contextId || ''}
                         onChange={(e) => updateConfig(index, { contextId: e.target.value })}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        className="w-full px-2 py-1 text-sm bg-gray-600 border border-gray-500 text-gray-100 rounded"
                       >
                         <option value="">No context</option>
                         {contexts.map(context => (
@@ -520,27 +520,27 @@ export default function BulkBuilderPage() {
 
             {/* Apply to All Buttons */}
             {workoutConfigs.length > 1 && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-gray-600 mb-2">Apply to all workouts:</p>
+              <div className="mt-4 pt-4 border-t border-gray-600">
+                <p className="text-sm text-gray-400 mb-2">Apply to all workouts:</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => {
                       const value = prompt('Enter duration (minutes):')
                       if (value) applyToAll('duration', parseInt(value) || 60)
                     }}
-                    className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    className="px-3 py-1 text-xs bg-gray-600 text-gray-100 hover:bg-gray-500 rounded"
                   >
                     Same Duration
                   </button>
                   <button
                     onClick={() => applyToAll('intensity', defaultSettings.intensity)}
-                    className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    className="px-3 py-1 text-xs bg-gray-600 text-gray-100 hover:bg-gray-500 rounded"
                   >
                     Same Intensity
                   </button>
                   <button
                     onClick={() => applyToAll('contextId', defaultSettings.contextId)}
-                    className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    className="px-3 py-1 text-xs bg-gray-600 text-gray-100 hover:bg-gray-500 rounded"
                   >
                     Same Context
                   </button>
@@ -552,9 +552,9 @@ export default function BulkBuilderPage() {
 
         {/* Generate Button */}
         {workoutConfigs.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-gray-800 rounded-lg shadow-lg p-6">
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+              <div className="mb-4 p-3 bg-red-900/30 border border-red-800 text-red-400 rounded">
                 {error}
               </div>
             )}
@@ -562,7 +562,7 @@ export default function BulkBuilderPage() {
             <button
               onClick={generateWorkouts}
               disabled={generating}
-              className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+              className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-500 disabled:bg-gray-600 transition-colors"
             >
               {generating ? (
                 <>
@@ -579,9 +579,9 @@ export default function BulkBuilderPage() {
 
             {generating && (
               <div className="mt-4">
-                <div className="bg-gray-200 rounded-full h-2">
+                <div className="bg-gray-700 rounded-full h-2">
                   <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${(progress.current / progress.total) * 100}%` }}
                   />
                 </div>
@@ -592,36 +592,36 @@ export default function BulkBuilderPage() {
 
         {/* Results */}
         {showResults && results.length > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold mb-4">Generation Results</h2>
+          <div className="mt-6 bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-100 mb-4">Generation Results</h2>
             <div className="space-y-2">
               {results.map((result, index) => (
                 <div 
                   key={index}
                   className={`flex items-center justify-between p-3 rounded ${
-                    result.success ? 'bg-green-50' : 'bg-red-50'
+                    result.success ? 'bg-green-900/30' : 'bg-red-900/30'
                   }`}
                 >
                   <div className="flex items-center">
                     {result.success ? (
-                      <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                      <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
                     ) : (
-                      <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+                      <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
                     )}
-                    <span className="font-medium">{result.client}</span>
+                    <span className="font-medium text-gray-100">{result.client}</span>
                     {result.success && (
-                      <span className="ml-2 text-sm text-gray-600">- {result.title}</span>
+                      <span className="ml-2 text-sm text-gray-400">- {result.title}</span>
                     )}
                   </div>
                   {result.success ? (
                     <a
                       href={`/workouts/${result.workoutId}`}
-                      className="text-blue-600 hover:underline text-sm"
+                      className="text-blue-400 hover:underline text-sm"
                     >
                       View Workout →
                     </a>
                   ) : (
-                    <span className="text-red-600 text-sm">{result.error}</span>
+                    <span className="text-red-400 text-sm">{result.error}</span>
                   )}
                 </div>
               ))}
@@ -630,7 +630,7 @@ export default function BulkBuilderPage() {
             <div className="mt-4 flex space-x-3">
               <button
                 onClick={() => router.push('/workouts')}
-                className="flex-1 py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex-1 py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-500"
               >
                 View All Workouts
               </button>
@@ -640,7 +640,7 @@ export default function BulkBuilderPage() {
                   setResults([])
                   setShowResults(false)
                 }}
-                className="flex-1 py-2 px-4 border border-gray-300 rounded hover:bg-gray-50"
+                className="flex-1 py-2 px-4 border border-gray-600 text-gray-300 rounded hover:bg-gray-700"
               >
                 Create More
               </button>
