@@ -198,7 +198,7 @@ export default function BulkBuilderPage() {
     setResults([])
     setProgress({ current: 0, total: groupMode ? 1 : workoutConfigs.length })
 
-    const generatedWorkouts = []
+    let generatedWorkouts: any[] = []
 
     if (groupMode) {
       // GROUP WORKOUT GENERATION
@@ -214,26 +214,16 @@ export default function BulkBuilderPage() {
           equipment: config.equipment ? config.equipment.split(',').map(e => e.trim()) : []
         }))
 
-        const generatedWorkouts = await generateGroupWorkouts(clientsData)
-        setResults(generatedWorkouts)
-        setShowResults(true)
-        setGenerating(false)
-        setProgressMessage('')
-        return
+        generatedWorkouts = await generateGroupWorkouts(clientsData)
       } catch (err: any) {
         console.error('Group workout generation error:', err)
         setError('Group workout generation failed. Switching to individual mode...')
         // Fallback to individual generation
-        const individualWorkouts = await generateIndividualWorkouts()
-        setResults(individualWorkouts)
-        setShowResults(true)
-        setGenerating(false)
-        setProgressMessage('')
-        return
+        generatedWorkouts = await generateIndividualWorkouts()
       }
     } else {
       // INDIVIDUAL WORKOUT GENERATION
-      await generateIndividualWorkouts()
+      generatedWorkouts = await generateIndividualWorkouts()
     }
 
     setResults(generatedWorkouts)
@@ -243,7 +233,7 @@ export default function BulkBuilderPage() {
   }
 
   async function generateGroupWorkouts(clientsData: any[]) {
-    const generatedWorkouts = []
+    const generatedWorkouts: any[] = []
     
     // Create abort controller for timeout
     const controller = new AbortController()
@@ -348,7 +338,7 @@ export default function BulkBuilderPage() {
   }
 
   async function generateIndividualWorkouts() {
-    const generatedWorkouts = []
+    const generatedWorkouts: any[] = []
     
     for (let i = 0; i < workoutConfigs.length; i++) {
       const config = workoutConfigs[i]
